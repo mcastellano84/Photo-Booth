@@ -134,6 +134,24 @@
     flex-direction:column;
     gap:1px;
   }
+  .demo-toggle{
+    background:none;
+    border:none;
+    color:var(--text-faint);
+    font-size:11px;
+    cursor:pointer;
+    text-decoration:underline;
+    padding:0;
+    font-family:'Space Grotesk', sans-serif;
+  }
+  .demo-toggle:hover{ color:var(--amber); }
+  .empty-state{
+    padding:36px 4px 60px;
+    color:var(--text-dim);
+    font-size:13px;
+    line-height:1.6;
+  }
+  .empty-state a{ color:var(--amber); text-decoration:underline; cursor:pointer; }
   .session-row{
     display:flex;
     align-items:center;
@@ -218,8 +236,24 @@
     cursor:pointer;
     position:relative;
     overflow:hidden;
+    touch-action:none;
   }
   .photo-tile:hover{ outline:2px solid var(--amber); outline-offset:-2px; }
+  .photo-tile.drop-target{ outline:3px solid var(--amber); outline-offset:-3px; }
+  .tile-delete{
+    position:absolute;
+    top:4px; right:4px;
+    width:22px; height:22px;
+    border-radius:50%;
+    background:rgba(0,0,0,0.65);
+    color:#fff;
+    border:none;
+    font-size:14px;
+    line-height:1;
+    cursor:pointer;
+    z-index:2;
+  }
+  .tile-delete:hover{ background:var(--rose); }
   .import-tile{
     aspect-ratio:1;
     background:var(--panel);
@@ -484,6 +518,7 @@
     </div>
     <div class="search">Search sessions…</div>
     <div class="section-label"><span>YOUR SESSIONS</span><span id="session-count-label">0</span></div>
+    <div style="padding:0 20px 10px;"><button class="demo-toggle" id="demo-toggle" onclick="toggleDemos()">Show sample sessions</button></div>
     <div class="session-list" id="session-list"></div>
     <button class="fab" onclick="createNewSession()">+ New session</button>
   </div>
@@ -491,7 +526,7 @@
   <!-- ============ SESSION DETAIL ============ -->
   <div class="screen" id="session">
     <div class="topbar">
-      <button class="back" onclick="goTo('library')">‹ Sessions</button>
+      <button class="back" onclick="backToLibrary()">‹ Sessions</button>
       <div class="title" id="session-title">Session</div>
       <button class="action" id="session-export-btn" onclick="exportSession()">Export</button>
     </div>
@@ -675,6 +710,7 @@
   ];
 
   let currentSession = null;
+  let showDemos = false;
   let currentPhotoIdx = 0;
   let screenAnswer = null; // null = unanswered, true/false after tap
   let selectedNeutral = null;
@@ -755,6 +791,10 @@
     return h;
   }
 
+  function photoCountLabel(n){
+    return `${n} photo${n === 1 ? '' : 's'}`;
+  }
+
   // ---------- IndexedDB (real sessions/photos persist here) ----------
   const DB_NAME = 'proofDB';
   const DB_VERSION = 1;
@@ -821,7 +861,7 @@
     });
   }
 
-  async function dbUpdatePhotoEdits(photoId, edits){
+  async function dbUpdatePhotoEdits(photoId, edits, thumbBlob){
     const db = await getDB();
     return new Promise((resolve, reject) => {
       const tx = db.transaction('photos','readwrite');
@@ -829,7 +869,7 @@
       const req = store.get(photoId);
       req.onsuccess = () => {
         const rec = req.result;
-        if(rec){ rec.edits = edits; store.put(rec); }
+        if(rec){ rec.edits = edits; if(thumbBlob) rec.thumbBlob = thumbBlob; store.put(rec); }
       };
       tx.oncomplete = resolve;
       tx.onerror = () => reject(tx.error);
@@ -945,17 +985,35 @@
       }
       currentSession.count = currentSession.photos.length;
       try{ await dbUpdateSessionCount(currentSession.id, currentSession.count); } catch(err){}
-      document.getElementById('session-count').textContent = currentSession.count + ' photos';
+      document.getElementById('session-count').textContent = photoCountLabel(currentSession.count);
       renderSessionGrid();
     };
     input.click();
   }
 
+  function toggleDemos(){
+    showDemos = !showDemos;
+    renderLibrary();
+  }
+
   function renderLibrary(){
     const list = document.getElementById('session-list');
     list.innerHTML = '';
-    document.getElementById('session-count-label').textContent = sessions.length;
-    sessions.forEach((s) => {
+    const visible = sessions.filter(s => s.isReal || showDemos);
+    document.getElementById('session-count-label').textContent = visible.length;
+
+    const toggleBtn = document.getElementById('demo-toggle');
+    if(toggleBtn) toggleBtn.textContent = showDemos ? 'Hide sample sessions' : 'Show sample sessions';
+
+    if(visible.length === 0){
+      const empty = document.createElement('div');
+      empty.className = 'empty-state';
+      empty.innerHTML = `No sessions yet. Create one above, or <a onclick="toggleDemos()">try a demo</a> to explore the tools first.`;
+      list.appendChild(empty);
+      return;
+    }
+
+    visible.forEach((s) => {
       const row = document.createElement('button');
       row.className = 'session-row';
       row.onclick = () => openSession(s.id);
@@ -980,7 +1038,7 @@
       meta.className = 'session-meta';
       meta.innerHTML = `
         <div class="name">${s.name}${s.screen ? '<span class="screen-flag">SCREEN</span>' : ''}${!s.isReal ? '<span class="demo-flag">DEMO</span>' : ''}</div>
-        <div class="stats">${s.count} photo${s.count === 1 ? '' : 's'}</div>
+        <div class="stats">${photoCountLabel(s.count)}</div>
       `;
 
       const chev = document.createElement('div');
@@ -1001,10 +1059,20 @@
       currentSession.photos.forEach((p, i) => {
         const tile = document.createElement('div');
         tile.className = 'photo-tile';
+        tile.dataset.index = i;
         tile.style.backgroundImage = `url(${URL.createObjectURL(p.thumbBlob)})`;
         tile.style.backgroundSize = 'cover';
         tile.style.backgroundPosition = 'center';
-        tile.onclick = () => openEditor(i);
+        tile.onclick = () => { if(!tile.dataset.dragged) openEditor(i); };
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'tile-delete';
+        delBtn.textContent = '×';
+        delBtn.setAttribute('aria-label', 'Delete photo');
+        delBtn.onclick = (e) => { e.stopPropagation(); deletePhoto(i); };
+        tile.appendChild(delBtn);
+
+        attachTileDragHandlers(tile, i);
         grid.appendChild(tile);
       });
     } else {
@@ -1023,6 +1091,106 @@
       ? importPhotos
       : () => alert('This is a demo session for trying out the tools. Create a new session to import your own photos.');
     grid.appendChild(importTile);
+  }
+
+  async function deletePhoto(idx){
+    const photo = currentSession.photos[idx];
+    if(!photo) return;
+    if(!confirm('Delete this photo? This cannot be undone.')) return;
+    try{
+      const db = await getDB();
+      const tx = db.transaction('photos','readwrite');
+      tx.objectStore('photos').delete(photo.id);
+      await new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); });
+    } catch(e){ console.error('Could not delete photo from storage:', e); }
+    currentSession.photos.splice(idx, 1);
+    currentSession.photos.forEach((p, i) => { p.order = i; });
+    currentSession.count = currentSession.photos.length;
+    try{ await dbUpdateSessionCount(currentSession.id, currentSession.count); } catch(e){ console.error(e); }
+    document.getElementById('session-count').textContent = photoCountLabel(currentSession.count);
+    renderSessionGrid();
+  }
+
+  // ---------- drag to reorder ----------
+  let tileDragState = null;
+
+  function attachTileDragHandlers(tile, photoIndex){
+    tile.addEventListener('pointerdown', (e) => {
+      if(e.target.closest('.tile-delete')) return;
+      tileDragState = { photoIndex, startX: e.clientX, startY: e.clientY, dragging: false, ghostEl: null };
+      window.addEventListener('pointermove', onTileDragMove);
+      window.addEventListener('pointerup', onTileDragEnd);
+    });
+  }
+
+  function onTileDragMove(e){
+    if(!tileDragState) return;
+    const dx = e.clientX - tileDragState.startX, dy = e.clientY - tileDragState.startY;
+    if(!tileDragState.dragging){
+      if(Math.abs(dx) < 12 && Math.abs(dy) < 12) return;
+      tileDragState.dragging = true;
+      const tiles = document.querySelectorAll('.photo-tile');
+      const srcTile = tiles[tileDragState.photoIndex];
+      if(!srcTile){ tileDragState = null; return; }
+      srcTile.dataset.dragged = '1';
+      const rect = srcTile.getBoundingClientRect();
+      const ghost = srcTile.cloneNode(true);
+      ghost.style.position = 'fixed';
+      ghost.style.left = rect.left + 'px';
+      ghost.style.top = rect.top + 'px';
+      ghost.style.width = rect.width + 'px';
+      ghost.style.height = rect.height + 'px';
+      ghost.style.pointerEvents = 'none';
+      ghost.style.opacity = '0.9';
+      ghost.style.zIndex = '9999';
+      ghost.style.transform = 'scale(1.06)';
+      ghost.style.boxShadow = '0 10px 24px rgba(0,0,0,0.5)';
+      document.body.appendChild(ghost);
+      tileDragState.ghostEl = ghost;
+      srcTile.style.opacity = '0.25';
+    }
+    if(tileDragState.ghostEl){
+      tileDragState.ghostEl.style.left = (e.clientX - tileDragState.ghostEl.offsetWidth/2) + 'px';
+      tileDragState.ghostEl.style.top = (e.clientY - tileDragState.ghostEl.offsetHeight/2) + 'px';
+    }
+    document.querySelectorAll('.photo-tile').forEach(t => t.classList.remove('drop-target'));
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const overTile = el && el.closest('.photo-tile');
+    if(overTile) overTile.classList.add('drop-target');
+  }
+
+  async function onTileDragEnd(e){
+    window.removeEventListener('pointermove', onTileDragMove);
+    window.removeEventListener('pointerup', onTileDragEnd);
+    if(!tileDragState) return;
+    const { photoIndex, dragging, ghostEl } = tileDragState;
+    if(dragging){
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      const overTile = el && el.closest('.photo-tile');
+      const tiles = Array.from(document.querySelectorAll('.photo-tile'));
+      const targetIndex = overTile ? tiles.indexOf(overTile) : -1;
+      if(ghostEl) ghostEl.remove();
+      tiles.forEach(t => { t.classList.remove('drop-target'); t.style.opacity = ''; delete t.dataset.dragged; });
+      if(targetIndex >= 0 && targetIndex !== photoIndex && targetIndex < currentSession.photos.length){
+        await reorderPhoto(photoIndex, targetIndex);
+      }
+    }
+    tileDragState = null;
+  }
+
+  async function reorderPhoto(fromIdx, toIdx){
+    const photos = currentSession.photos;
+    const [moved] = photos.splice(fromIdx, 1);
+    photos.splice(toIdx, 0, moved);
+    photos.forEach((p, i) => { p.order = i; });
+    renderSessionGrid();
+    try{
+      const db = await getDB();
+      const tx = db.transaction('photos','readwrite');
+      const store = tx.objectStore('photos');
+      photos.forEach(p => store.put(p));
+      await new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); });
+    } catch(e){ console.error('Could not persist photo order:', e); }
   }
 
   // ---------- synthetic photo generation (demo sessions only) ----------
@@ -1431,13 +1599,12 @@
 
   function attachCropDragHandlers(rectDiv, handle){
     let dragMode = null;
-    let startClientX = 0, startClientY = 0, startRect = null;
+    let lastClientX = 0, lastClientY = 0;
 
     function onDown(e, mode){
       if(mode === 'move' && cropAspectMode !== 'free') return; // fixed-aspect crops stay centered
       dragMode = mode;
-      startClientX = e.clientX; startClientY = e.clientY;
-      startRect = { ...cropRect };
+      lastClientX = e.clientX; lastClientY = e.clientY;
       pushHistory();
       e.stopPropagation();
       e.preventDefault();
@@ -1449,19 +1616,22 @@
 
     function onMove(e){
       if(!dragMode) return;
+      // recompute scale fresh on every move (not just at drag start) so an
+      // orientation change or resize mid-drag can't leave the math stale
       const canvas = document.getElementById('editor-photo');
       const canvasRect = canvas.getBoundingClientRect();
       const scaleX = 480 / canvasRect.width, scaleY = 600 / canvasRect.height;
-      const dx = (e.clientX - startClientX) * scaleX;
-      const dy = (e.clientY - startClientY) * scaleY;
+      const dx = (e.clientX - lastClientX) * scaleX;
+      const dy = (e.clientY - lastClientY) * scaleY;
+      lastClientX = e.clientX; lastClientY = e.clientY;
       if(dragMode === 'move'){
-        let nx = startRect.x + dx, ny = startRect.y + dy;
-        nx = Math.max(0, Math.min(480 - startRect.w, nx));
-        ny = Math.max(0, Math.min(600 - startRect.h, ny));
+        let nx = cropRect.x + dx, ny = cropRect.y + dy;
+        nx = Math.max(0, Math.min(480 - cropRect.w, nx));
+        ny = Math.max(0, Math.min(600 - cropRect.h, ny));
         cropRect = { ...cropRect, x: nx, y: ny };
       } else {
-        let nw = Math.max(60, Math.min(480 - startRect.x, startRect.w + dx));
-        let nh = Math.max(60, Math.min(600 - startRect.y, startRect.h + dy));
+        let nw = Math.max(60, Math.min(480 - cropRect.x, cropRect.w + dx));
+        let nh = Math.max(60, Math.min(600 - cropRect.y, cropRect.h + dy));
         cropRect = { ...cropRect, w: nw, h: nh };
       }
       renderCropOverlay();
@@ -1567,6 +1737,20 @@
     }
   }
 
+  async function regenerateThumbnail(){
+    if(!rawCanvas) return null;
+    const full = computeFullComposite();
+    const r = cropRect || { x:0, y:0, w:480, h:600 };
+    const size = 300;
+    const scale = Math.min(size / r.w, size / r.h);
+    const tw = Math.max(1, Math.round(r.w * scale));
+    const th = Math.max(1, Math.round(r.h * scale));
+    const thumbCanvas = document.createElement('canvas');
+    thumbCanvas.width = tw; thumbCanvas.height = th;
+    thumbCanvas.getContext('2d').drawImage(full, r.x, r.y, r.w, r.h, 0, 0, tw, th);
+    return new Promise(resolve => thumbCanvas.toBlob(resolve, 'image/jpeg', 0.85));
+  }
+
   async function saveCurrentEditsToPhoto(){
     if(!currentSession || !currentSession.isReal) return;
     const photo = currentSession.photos[currentPhotoIdx];
@@ -1576,12 +1760,25 @@
       lightAdjust: { ...lightAdjust }, colorAdjust: { ...colorAdjust },
       cropRect: cropRect ? { ...cropRect } : null, cropAspectMode
     };
-    try{ await dbUpdatePhotoEdits(photo.id, photo.edits); } catch(e){ console.error('Could not save edits:', e); }
+    try{
+      const newThumb = await regenerateThumbnail();
+      if(newThumb) photo.thumbBlob = newThumb;
+    } catch(e){ console.error('Could not regenerate thumbnail:', e); }
+    try{ await dbUpdatePhotoEdits(photo.id, photo.edits, photo.thumbBlob); } catch(e){ console.error('Could not save edits:', e); }
   }
 
   async function backToSession(){
     await saveCurrentEditsToPhoto();
+    renderSessionGrid();
     goTo('session');
+  }
+
+  async function backToLibrary(){
+    if(document.getElementById('editor').classList.contains('active')){
+      await saveCurrentEditsToPhoto();
+    }
+    renderLibrary();
+    goTo('library');
   }
 
   function goTo(id){
@@ -1593,7 +1790,7 @@
   function openSession(sessionId){
     currentSession = sessions.find(s => s.id === sessionId);
     document.getElementById('session-title').textContent = currentSession.name;
-    document.getElementById('session-count').textContent = currentSession.count + ' photos';
+    document.getElementById('session-count').textContent = photoCountLabel(currentSession.count);
     document.getElementById('session-screen-tag').innerHTML = currentSession.screen
       ? '<span class="screen-flag">SCREEN</span>'
       : '';
