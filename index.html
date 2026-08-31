@@ -1,0 +1,1753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Proof — Photo Editor for Independent Photographers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  :root{
+    --bg: #1C1A17;
+    --panel: #26231F;
+    --panel-raised: #2E2A25;
+    --hair: #3A3630;
+    --text: #EDE8E0;
+    --text-dim: #9C9488;
+    --text-faint: #66605A;
+    --amber: #C9A15C;
+    --amber-dim: #8A7248;
+    --sage: #7C9070;
+    --rose: #B06A5C;
+    --radius: 3px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    background: #0F0E0C;
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    display:flex;
+    justify-content:center;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  .device{
+    width:100%;
+    max-width:420px;
+    min-height:100vh;
+    background:var(--bg);
+    display:flex;
+    flex-direction:column;
+    position:relative;
+    border-left:1px solid #000;
+    border-right:1px solid #000;
+  }
+  .serif{ font-family:'Fraunces', serif; }
+
+  /* ---------- top bar ---------- */
+  .topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:18px 18px 14px;
+    border-bottom:1px solid var(--hair);
+    flex-shrink:0;
+  }
+  .topbar .back{
+    font-size:14px;
+    color:var(--text-dim);
+    background:none;
+    border:none;
+    cursor:pointer;
+    letter-spacing:.01em;
+    display:flex;
+    align-items:center;
+    gap:6px;
+    padding:6px 0;
+  }
+  .topbar .back:hover{ color:var(--text); }
+  .topbar .title{
+    font-family:'Fraunces', serif;
+    font-size:18px;
+    font-weight:500;
+    text-align:center;
+    flex:1;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    padding:0 10px;
+  }
+  .topbar .action{
+    font-size:13px;
+    color:var(--amber);
+    background:none;
+    border:none;
+    cursor:pointer;
+    font-weight:600;
+    white-space:nowrap;
+  }
+  .topbar .action:hover{ opacity:.8; }
+  .topbar .spacer{ width:52px; }
+
+  .screen{ flex:1; display:none; flex-direction:column; overflow-y:auto; }
+  .screen.active{ display:flex; }
+
+  /* ---------- LIBRARY ---------- */
+  #library .brand{
+    padding:28px 20px 6px;
+  }
+  #library .brand .word{
+    font-family:'Fraunces', serif;
+    font-size:28px;
+    font-weight:500;
+    letter-spacing:-.01em;
+  }
+  #library .brand .word span{ color:var(--amber); }
+  #library .brand .sub{
+    color:var(--text-dim);
+    font-size:13px;
+    margin-top:4px;
+  }
+  .search{
+    margin:16px 20px;
+    padding:10px 12px;
+    background:var(--panel);
+    border:1px solid var(--hair);
+    border-radius:var(--radius);
+    color:var(--text-dim);
+    font-size:13px;
+    font-family:'Space Grotesk',sans-serif;
+  }
+  .section-label{
+    padding:8px 20px;
+    font-size:11px;
+    letter-spacing:.08em;
+    color:var(--text-faint);
+    display:flex;
+    justify-content:space-between;
+  }
+  .session-list{
+    padding:0 20px 100px;
+    display:flex;
+    flex-direction:column;
+    gap:1px;
+  }
+  .session-row{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    padding:14px 4px;
+    border-bottom:1px solid var(--hair);
+    cursor:pointer;
+    background:none;
+    border-left:none; border-right:none; border-top:none;
+    width:100%;
+    text-align:left;
+    color:var(--text);
+  }
+  .session-row:hover{ background:rgba(255,255,255,0.02); }
+  .thumb{
+    width:56px; height:56px;
+    border-radius:var(--radius);
+    flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    font-size:18px;
+    position:relative;
+    overflow:hidden;
+  }
+  .thumb::after{
+    content:'';
+    position:absolute; inset:0;
+    background:linear-gradient(135deg, rgba(0,0,0,0) 40%, rgba(0,0,0,.35));
+  }
+  .session-meta{ flex:1; min-width:0; }
+  .session-meta .name{
+    font-size:14.5px; font-weight:500;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .session-meta .stats{
+    font-size:12px; color:var(--text-dim); margin-top:3px;
+  }
+  .screen-flag{
+    font-size:10px;
+    color:var(--sage);
+    border:1px solid var(--sage);
+    border-radius:2px;
+    padding:1px 5px;
+    margin-left:6px;
+    letter-spacing:.02em;
+  }
+  .demo-flag{
+    font-size:10px;
+    color:var(--text-faint);
+    border:1px solid var(--text-faint);
+    border-radius:2px;
+    padding:1px 5px;
+    margin-left:6px;
+    letter-spacing:.02em;
+  }
+  .chev{ color:var(--text-faint); font-size:16px; }
+
+  .fab{
+    position:absolute;
+    bottom:24px; left:20px; right:20px;
+    background:var(--amber);
+    color:#1C1A17;
+    border:none;
+    padding:15px;
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:600;
+    font-size:14px;
+    border-radius:var(--radius);
+    cursor:pointer;
+    letter-spacing:.01em;
+  }
+  .fab:hover{ background:#d9ae66; }
+
+  /* ---------- SESSION DETAIL ---------- */
+  .photo-grid{
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:2px;
+    padding:2px;
+  }
+  .photo-tile{
+    aspect-ratio:1;
+    cursor:pointer;
+    position:relative;
+    overflow:hidden;
+  }
+  .photo-tile:hover{ outline:2px solid var(--amber); outline-offset:-2px; }
+  .import-tile{
+    aspect-ratio:1;
+    background:var(--panel);
+    border:1px dashed var(--hair);
+    display:flex; align-items:center; justify-content:center;
+    color:var(--text-faint);
+    font-size:22px;
+    cursor:pointer;
+  }
+  .import-tile:hover{ color:var(--amber); border-color:var(--amber-dim); }
+  .session-sub{
+    padding:12px 20px;
+    color:var(--text-dim);
+    font-size:12px;
+    display:flex;
+    justify-content:space-between;
+    border-bottom:1px solid var(--hair);
+  }
+
+  /* ---------- EDITOR ---------- */
+  #editor{ background:#141210; }
+  .editor-canvas{
+    flex-shrink:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:16px;
+    position:relative;
+  }
+  .editor-photo{
+    width:100%;
+    max-width:340px;
+    max-height:52vh;
+    aspect-ratio:4/5;
+    border-radius:2px;
+    display:block;
+    margin:0 auto;
+    background:#2c2822;
+  }
+  .frame-counter{
+    text-align:center;
+    font-size:11px;
+    color:var(--text-faint);
+    padding-bottom:10px;
+    letter-spacing:.04em;
+  }
+
+  .tool-tabs{
+    display:flex;
+    border-top:1px solid var(--hair);
+    border-bottom:1px solid var(--hair);
+    flex-shrink:0;
+  }
+  .tool-tab{
+    flex:1;
+    padding:13px 4px;
+    text-align:center;
+    font-size:11.5px;
+    color:var(--text-dim);
+    background:none;
+    border:none;
+    cursor:pointer;
+    letter-spacing:.02em;
+    border-bottom:2px solid transparent;
+  }
+  .tool-tab.active{
+    color:var(--amber);
+    border-bottom:2px solid var(--amber);
+  }
+  .tool-tab:hover:not(.active){ color:var(--text); }
+
+  .tool-panel{
+    padding:18px 20px 28px;
+    min-height:200px;
+    flex-shrink:0;
+  }
+  .tool-panel .hidden{ display:none; }
+
+  /* light/color sliders (decorative, non-functional in mockup) */
+  .slider-row{
+    margin-bottom:16px;
+  }
+  .slider-row .label-row{
+    display:flex; justify-content:space-between;
+    font-size:12.5px; margin-bottom:8px; color:var(--text-dim);
+  }
+  .slider-row .label-row .val{ color:var(--text); }
+  .slider-track{
+    height:2px; background:var(--hair); position:relative; border-radius:2px;
+  }
+  .slider-fill{
+    position:absolute; left:0; top:0; height:100%; background:var(--amber);
+  }
+  .slider-knob{
+    position:absolute; top:50%; width:14px; height:14px;
+    background:var(--amber); border-radius:50%;
+    transform:translate(-50%,-50%);
+  }
+
+  /* backdrop tool */
+  .backdrop-question{
+    background:var(--panel);
+    border:1px solid var(--hair);
+    border-radius:var(--radius);
+    padding:16px;
+    margin-bottom:18px;
+  }
+  .backdrop-question p{
+    font-size:13px;
+    color:var(--text-dim);
+    line-height:1.5;
+    margin-bottom:14px;
+  }
+  .backdrop-question .serif{ color:var(--text); font-size:14.5px; display:block; margin-bottom:4px;}
+  .yn-row{ display:flex; gap:10px; }
+  .yn-btn{
+    flex:1;
+    padding:10px;
+    background:var(--panel-raised);
+    border:1px solid var(--hair);
+    color:var(--text);
+    font-family:'Space Grotesk', sans-serif;
+    font-size:13px;
+    font-weight:500;
+    border-radius:var(--radius);
+    cursor:pointer;
+  }
+  .yn-btn:hover{ border-color:var(--amber-dim); }
+  .yn-btn.selected{
+    background:var(--amber);
+    color:#1C1A17;
+    border-color:var(--amber);
+    font-weight:600;
+  }
+
+  .backdrop-note{
+    font-size:12px;
+    color:var(--text-faint);
+    line-height:1.5;
+    padding:10px 2px 18px;
+    border-bottom:1px solid var(--hair);
+    margin-bottom:16px;
+  }
+  .backdrop-note strong{ color:var(--text-dim); font-weight:500; }
+
+  .swatch-label{
+    font-size:11px;
+    letter-spacing:.06em;
+    color:var(--text-faint);
+    margin-bottom:10px;
+  }
+  .swatch-grid{
+    display:grid;
+    grid-template-columns:repeat(4, 1fr);
+    gap:8px;
+    margin-bottom:22px;
+  }
+  .swatch{
+    aspect-ratio:1;
+    border-radius:var(--radius);
+    cursor:pointer;
+    border:2px solid transparent;
+    position:relative;
+    display:flex;
+    align-items:flex-end;
+  }
+  .swatch.selected{ border-color:var(--amber); }
+  .swatch .sname{
+    font-size:9px;
+    color:rgba(255,255,255,.85);
+    padding:4px;
+    line-height:1.2;
+    text-shadow:0 1px 2px rgba(0,0,0,.6);
+  }
+  .swatch-upload{
+    display:flex; align-items:center; justify-content:center;
+    color:var(--text-faint);
+    font-size:16px;
+    background:var(--panel);
+    border:1px dashed var(--hair);
+  }
+  .swatch-upload:hover{ color:var(--amber); }
+
+  .crop-note, .placeholder-note{
+    font-size:13px;
+    color:var(--text-dim);
+    line-height:1.6;
+    padding:8px 2px;
+  }
+
+  .bottom-actions{
+    display:flex;
+    gap:10px;
+    padding:14px 20px 22px;
+    border-top:1px solid var(--hair);
+    flex-shrink:0;
+  }
+  .btn-secondary{
+    flex:1;
+    padding:12px;
+    background:none;
+    border:1px solid var(--hair);
+    color:var(--text-dim);
+    font-family:'Space Grotesk', sans-serif;
+    font-size:13px;
+    border-radius:var(--radius);
+    cursor:pointer;
+  }
+  .btn-primary{
+    flex:1;
+    padding:12px;
+    background:var(--amber);
+    border:1px solid var(--amber);
+    color:#1C1A17;
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:600;
+    font-size:13px;
+    border-radius:var(--radius);
+    cursor:pointer;
+  }
+  .btn-secondary:disabled{
+    opacity:.35;
+    cursor:default;
+  }
+
+  /* ---------- crop overlay ---------- */
+  #crop-overlay{
+    position:absolute;
+    display:none;
+    pointer-events:none;
+  }
+  #crop-overlay.active{ display:block; }
+  .crop-rect{
+    position:absolute;
+    border:2px solid var(--amber);
+    box-shadow:0 0 0 2000px rgba(0,0,0,0.55);
+    pointer-events:auto;
+    cursor:move;
+    touch-action:none;
+  }
+  .crop-handle{
+    position:absolute;
+    width:20px; height:20px;
+    right:-10px; bottom:-10px;
+    background:var(--amber);
+    border:2px solid #1C1A17;
+    border-radius:50%;
+    cursor:nwse-resize;
+    pointer-events:auto;
+    touch-action:none;
+  }
+</style>
+</head>
+<body>
+<div class="device">
+
+  <!-- ============ LIBRARY ============ -->
+  <div class="screen active" id="library">
+    <div class="brand">
+      <div class="word">proof<span>.</span></div>
+      <div class="sub">Sessions live here. Import, edit, export.</div>
+    </div>
+    <div class="search">Search sessions…</div>
+    <div class="section-label"><span>YOUR SESSIONS</span><span id="session-count-label">0</span></div>
+    <div class="session-list" id="session-list"></div>
+    <button class="fab" onclick="createNewSession()">+ New session</button>
+  </div>
+
+  <!-- ============ SESSION DETAIL ============ -->
+  <div class="screen" id="session">
+    <div class="topbar">
+      <button class="back" onclick="goTo('library')">‹ Sessions</button>
+      <div class="title" id="session-title">Session</div>
+      <button class="action" id="session-export-btn" onclick="exportSession()">Export</button>
+    </div>
+    <div class="session-sub">
+      <span id="session-count">— photos</span>
+      <span id="session-screen-tag"></span>
+    </div>
+    <div class="photo-grid" id="photo-grid"></div>
+  </div>
+
+  <!-- ============ EDITOR ============ -->
+  <div class="screen" id="editor">
+    <div class="topbar">
+      <button class="back" onclick="backToSession()">‹ Back</button>
+      <div class="title" id="editor-title">Photo</div>
+      <button class="action" onclick="exportCurrentPhoto()">Export</button>
+    </div>
+    <div class="editor-canvas">
+      <canvas class="editor-photo" id="editor-photo" width="480" height="600"></canvas>
+      <div id="crop-overlay"></div>
+    </div>
+    <div class="frame-counter" id="frame-counter">Photo 3 of 42</div>
+    <div style="text-align:center; font-size:10px; color:var(--text-faint); margin-top:-6px; padding-bottom:10px; letter-spacing:.02em;" id="photo-source-note">Synthetic demo photo</div>
+
+    <div class="tool-tabs">
+      <button class="tool-tab active" data-tool="backdrop" onclick="selectTool('backdrop')">Backdrop</button>
+      <button class="tool-tab" data-tool="light" onclick="selectTool('light')">Light</button>
+      <button class="tool-tab" data-tool="color" onclick="selectTool('color')">Color</button>
+      <button class="tool-tab" data-tool="crop" onclick="selectTool('crop')">Crop</button>
+    </div>
+
+    <div class="tool-panel">
+
+      <!-- BACKDROP TOOL -->
+      <div id="tool-backdrop">
+        <div class="backdrop-question">
+          <span class="serif">Was this shot on a green or blue screen?</span>
+          <p>This tells us whether we can cleanly swap in a scene backdrop, or just offer a neutral backdrop for judging exposure and color.</p>
+          <div class="yn-row">
+            <button class="yn-btn" id="yn-yes" onclick="setScreenAnswer(true)">Yes, screen used</button>
+            <button class="yn-btn" id="yn-no" onclick="setScreenAnswer(false)">No plain background</button>
+          </div>
+
+          <div id="key-controls" style="display:none; margin-top:16px; padding-top:16px; border-top:1px solid var(--hair);">
+            <div class="swatch-label" style="margin-bottom:8px;">SCREEN COLOR</div>
+            <div class="yn-row" style="margin-bottom:16px;">
+              <button class="yn-btn" id="key-green" onclick="setKeyColor('green')">Green</button>
+              <button class="yn-btn" id="key-blue" onclick="setKeyColor('blue')">Blue</button>
+            </div>
+            <div class="slider-row" style="margin-bottom:0;">
+              <div class="label-row"><span>Edge tolerance</span><span class="val" id="tolerance-val">50</span></div>
+              <input type="range" id="tolerance-slider" min="10" max="90" value="65" oninput="setTolerance(this.value)" style="width:100%; accent-color:#C9A15C;">
+            </div>
+          </div>
+        </div>
+
+        <div id="backdrop-scene-block" style="display:none;">
+          <div class="swatch-label">SCENE BACKDROPS — SWAPPED CLEANLY, ORIGINAL UNTOUCHED</div>
+          <div class="swatch-grid" id="scene-swatches"></div>
+        </div>
+
+        <div id="backdrop-neutral-note" class="backdrop-note" style="display:none;">
+          No screen behind the subject means a clean scene swap isn't reliable — we'd have to guess at the edges. <strong>Neutral backdrops still work perfectly</strong>, and are the more accurate way to judge true exposure and color anyway.
+        </div>
+
+        <div class="swatch-label">NEUTRAL VIEWING BACKDROPS — NEVER ALTERS THE PHOTO</div>
+        <div class="swatch-grid" id="neutral-swatches"></div>
+      </div>
+
+      <!-- LIGHT TOOL -->
+      <div id="tool-light" class="hidden">
+        <div class="slider-row">
+          <div class="label-row"><span>Exposure</span><span class="val" id="exposure-val">0</span></div>
+          <input type="range" id="exposure-slider" min="-100" max="100" value="0" oninput="setLightAdjust('exposure', this.value)" style="width:100%; accent-color:#C9A15C;">
+        </div>
+        <div class="slider-row">
+          <div class="label-row"><span>Contrast</span><span class="val" id="contrast-val">0</span></div>
+          <input type="range" id="contrast-slider" min="-100" max="100" value="0" oninput="setLightAdjust('contrast', this.value)" style="width:100%; accent-color:#C9A15C;">
+        </div>
+        <div class="slider-row">
+          <div class="label-row"><span>Highlights</span><span class="val" id="highlights-val">0</span></div>
+          <input type="range" id="highlights-slider" min="-100" max="100" value="0" oninput="setLightAdjust('highlights', this.value)" style="width:100%; accent-color:#C9A15C;">
+        </div>
+        <div class="slider-row">
+          <div class="label-row"><span>Shadows</span><span class="val" id="shadows-val">0</span></div>
+          <input type="range" id="shadows-slider" min="-100" max="100" value="0" oninput="setLightAdjust('shadows', this.value)" style="width:100%; accent-color:#C9A15C;">
+        </div>
+        <div class="placeholder-note">Adjustments apply to the photo itself — a swapped-in scene backdrop is left as-is.</div>
+      </div>
+
+      <!-- COLOR TOOL -->
+      <div id="tool-color" class="hidden">
+        <div class="slider-row">
+          <div class="label-row"><span>Temperature</span><span class="val" id="temperature-val">Neutral</span></div>
+          <input type="range" id="temperature-slider" min="-100" max="100" value="0" oninput="setColorAdjust('temperature', this.value)" style="width:100%; accent-color:#C98E5C;">
+        </div>
+        <div class="slider-row">
+          <div class="label-row"><span>Tint</span><span class="val" id="tint-val">0</span></div>
+          <input type="range" id="tint-slider" min="-100" max="100" value="0" oninput="setColorAdjust('tint', this.value)" style="width:100%; accent-color:#C9A15C;">
+        </div>
+        <div class="slider-row">
+          <div class="label-row"><span>Saturation</span><span class="val" id="saturation-val">0</span></div>
+          <input type="range" id="saturation-slider" min="-100" max="100" value="0" oninput="setColorAdjust('saturation', this.value)" style="width:100%; accent-color:#C9A15C;">
+        </div>
+        <div class="placeholder-note">One-tap presets (portrait, moody, bright/airy) are a good next addition once these feel right.</div>
+      </div>
+
+      <!-- CROP TOOL -->
+      <div id="tool-crop" class="hidden">
+        <div class="swatch-label">ASPECT</div>
+        <div class="yn-row" style="margin-bottom:18px;">
+          <button class="yn-btn selected" data-aspect="4:5" onclick="setCropAspect('4:5')">4:5</button>
+          <button class="yn-btn" data-aspect="1:1" onclick="setCropAspect('1:1')">1:1</button>
+          <button class="yn-btn" data-aspect="16:9" onclick="setCropAspect('16:9')">16:9</button>
+          <button class="yn-btn" data-aspect="free" onclick="setCropAspect('free')">Free</button>
+        </div>
+        <div class="placeholder-note">The canvas above shows the full frame while you're on this tab — drag the amber handle to resize (Free), or drag inside the box to move it. Switch tabs to see the cropped result.</div>
+      </div>
+
+    </div>
+
+    <div class="bottom-actions">
+      <button class="btn-secondary" id="undo-btn" onclick="undo()" disabled>Undo</button>
+      <button class="btn-secondary" onclick="resetEdits()">Reset</button>
+      <button class="btn-primary" onclick="nextPhoto()">Next ›</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const sessions = [
+    {
+      id: 'demo-wedding',
+      name: "Sarah & Mike — Wedding",
+      count: 214,
+      screen: true,
+      keyColor: 'green',
+      isReal: false,
+      icon: '🏛',
+      demoColors: ["#4a4038","#3d352d","#564a3c","#443a30","#5a4c3a","#3a322a"]
+    },
+    {
+      id: 'demo-headshots',
+      name: "Downtown Headshots",
+      count: 42,
+      screen: true,
+      keyColor: 'blue',
+      isReal: false,
+      icon: '◐',
+      demoColors: ["#5a4a3a","#4a3e30","#3e362c","#54473a","#463c32","#403830"]
+    },
+    {
+      id: 'demo-family',
+      name: "Chen Family — Fall Mini",
+      count: 31,
+      screen: false,
+      keyColor: null,
+      isReal: false,
+      icon: '✦',
+      demoColors: ["#3a4a42","#324038","#2c3830","#38443c","#2e3a34","#324438"]
+    }
+  ];
+
+  const sceneBackdrops = [
+    {name:"Autumn Grove", css:"linear-gradient(160deg,#9a6a3a,#4a3320)", draw: drawAutumnGrove},
+    {name:"Marble Studio", css:"linear-gradient(160deg,#8a8478,#5c574c)", draw: drawMarbleStudio},
+    {name:"Soft Clouds", css:"linear-gradient(160deg,#9aa8b0,#6c7880)", draw: drawSoftClouds},
+    {name:"Brick Wall", css:"linear-gradient(160deg,#8a4a3c,#5a2e24)", draw: drawBrickWall},
+    {name:"City Bokeh", css:"linear-gradient(160deg,#4a4258,#241f30)", draw: drawCityBokeh},
+    {name:"Library", css:"linear-gradient(160deg,#5a4a34,#332818)", draw: drawLibrary},
+    {name:"Seamless Navy", css:"linear-gradient(160deg,#2c3a52,#161e2c)", draw: drawSeamlessNavy},
+    {name:"Upload your own", upload:true}
+  ];
+
+  const neutralBackdrops = [
+    {name:"White", css:"#e8e4dc", dark:true, fill:"#e8e4dc"},
+    {name:"Mid Gray", css:"#8a857c", dark:true, fill:"#8a857c"},
+    {name:"Charcoal", css:"#26231F", fill:"#26231F"},
+    {name:"Checker", css:"repeating-conic-gradient(#3a3630 0% 25%, #26231F 0% 50%) 0 0/16px 16px", fill:"checker"}
+  ];
+
+  let currentSession = null;
+  let currentPhotoIdx = 0;
+  let screenAnswer = null; // null = unanswered, true/false after tap
+  let selectedNeutral = null;
+  let selectedScene = null;
+  let selectedKeyColor = 'green';
+  let tolerance = 65;
+  let rawCanvas = null; // the "captured" photo for the photo currently open in the editor
+  let lightAdjust = { exposure: 0, contrast: 0, highlights: 0, shadows: 0 };
+  let colorAdjust = { temperature: 0, tint: 0, saturation: 0 };
+  let cropRect = null; // {x,y,w,h} in 480x600 space, or null = full uncropped frame
+  let cropAspectMode = '4:5';
+  let editHistory = []; // stack of prior states, for Undo
+  let redoStack = [];
+  let pendingDragSnapshot = null;
+
+  // ---------- undo history ----------
+  function snapshotState(){
+    return {
+      screenAnswer, selectedScene, selectedNeutral, selectedKeyColor, tolerance,
+      lightAdjust: {...lightAdjust}, colorAdjust: {...colorAdjust},
+      cropRect: cropRect ? {...cropRect} : null, cropAspectMode
+    };
+  }
+
+  function restoreState(state){
+    screenAnswer = state.screenAnswer;
+    selectedScene = state.selectedScene;
+    selectedNeutral = state.selectedNeutral;
+    selectedKeyColor = state.selectedKeyColor;
+    tolerance = state.tolerance;
+    lightAdjust = {...state.lightAdjust};
+    colorAdjust = {...state.colorAdjust};
+    cropRect = state.cropRect ? {...state.cropRect} : null;
+    cropAspectMode = state.cropAspectMode;
+    renderBackdropTool();
+    renderLightColorUI();
+    renderCropAspectButtons();
+    renderComposite();
+  }
+
+  function pushHistory(){
+    editHistory.push(snapshotState());
+    if(editHistory.length > 30) editHistory.shift();
+    redoStack = [];
+    updateUndoButton();
+  }
+
+  function undo(){
+    if(editHistory.length === 0) return;
+    const prev = editHistory.pop();
+    restoreState(prev);
+    updateUndoButton();
+  }
+
+  function updateUndoButton(){
+    const btn = document.getElementById('undo-btn');
+    if(btn) btn.disabled = editHistory.length === 0;
+  }
+
+  function wireSliderHistory(id){
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.addEventListener('pointerdown', () => { pendingDragSnapshot = snapshotState(); });
+    el.addEventListener('change', () => {
+      if(pendingDragSnapshot){
+        editHistory.push(pendingDragSnapshot);
+        if(editHistory.length > 30) editHistory.shift();
+        redoStack = [];
+        updateUndoButton();
+        pendingDragSnapshot = null;
+      }
+    });
+  }
+
+  function hashString(s){
+    let h = 0;
+    for(let i=0;i<s.length;i++){ h = (h*31 + s.charCodeAt(i)) | 0; }
+    return h;
+  }
+
+  // ---------- IndexedDB (real sessions/photos persist here) ----------
+  const DB_NAME = 'proofDB';
+  const DB_VERSION = 1;
+  let dbInstance = null;
+
+  function dbOpen(){
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if(!db.objectStoreNames.contains('sessions')){
+          db.createObjectStore('sessions', {keyPath:'id'});
+        }
+        if(!db.objectStoreNames.contains('photos')){
+          const store = db.createObjectStore('photos', {keyPath:'id'});
+          store.createIndex('sessionId', 'sessionId', {unique:false});
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function getDB(){
+    if(!dbInstance) dbInstance = await dbOpen();
+    return dbInstance;
+  }
+
+  async function dbAddSession(session){
+    const db = await getDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('sessions','readwrite');
+      tx.objectStore('sessions').put({
+        id: session.id, name: session.name, screen: session.screen,
+        keyColor: session.keyColor, count: session.count
+      });
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  async function dbUpdateSessionCount(id, count){
+    const db = await getDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('sessions','readwrite');
+      const store = tx.objectStore('sessions');
+      const req = store.get(id);
+      req.onsuccess = () => {
+        const rec = req.result;
+        if(rec){ rec.count = count; store.put(rec); }
+      };
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  async function dbAddPhoto(photo){
+    const db = await getDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('photos','readwrite');
+      tx.objectStore('photos').put(photo);
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  async function dbUpdatePhotoEdits(photoId, edits){
+    const db = await getDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('photos','readwrite');
+      const store = tx.objectStore('photos');
+      const req = store.get(photoId);
+      req.onsuccess = () => {
+        const rec = req.result;
+        if(rec){ rec.edits = edits; store.put(rec); }
+      };
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  async function dbGetAllSessions(){
+    const db = await getDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('sessions','readonly');
+      const req = tx.objectStore('sessions').getAll();
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function dbGetPhotosForSession(sessionId){
+    const db = await getDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('photos','readonly');
+      const idx = tx.objectStore('photos').index('sessionId');
+      const req = idx.getAll(sessionId);
+      req.onsuccess = () => resolve(req.result.sort((a,b) => a.order - b.order));
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function loadRealSessions(){
+    try{
+      const stored = await dbGetAllSessions();
+      for(const s of stored){
+        s.isReal = true;
+        s.photos = await dbGetPhotosForSession(s.id);
+        sessions.push(s);
+      }
+    } catch(e){
+      console.error('IndexedDB unavailable, real sessions will not persist:', e);
+    }
+    renderLibrary();
+  }
+
+  function makeThumbnail(file, size){
+    return new Promise(async (resolve) => {
+      const bitmap = await createImageBitmap(file);
+      const scale = Math.min(size/bitmap.width, size/bitmap.height);
+      const w = Math.max(1, Math.round(bitmap.width*scale));
+      const h = Math.max(1, Math.round(bitmap.height*scale));
+      const cvs = document.createElement('canvas');
+      cvs.width = w; cvs.height = h;
+      cvs.getContext('2d').drawImage(bitmap, 0, 0, w, h);
+      cvs.toBlob((blob) => resolve(blob), 'image/jpeg', 0.85);
+    });
+  }
+
+  async function loadRealPhotoToCanvas(photo){
+    const w = 480, h = 600;
+    const cvs = document.createElement('canvas');
+    cvs.width = w; cvs.height = h;
+    const ctx = cvs.getContext('2d');
+    ctx.fillStyle = '#141210';
+    ctx.fillRect(0,0,w,h);
+    const bitmap = await createImageBitmap(photo.blob);
+    const scale = Math.min(w/bitmap.width, h/bitmap.height);
+    const dw = bitmap.width*scale, dh = bitmap.height*scale;
+    ctx.drawImage(bitmap, (w-dw)/2, (h-dh)/2, dw, dh);
+    return cvs;
+  }
+
+  async function createNewSession(){
+    const name = prompt("Session name (e.g. client + shoot type):");
+    if(!name) return;
+    const screen = confirm("Was this session shot on a green or blue screen?\n\nOK = Yes   Cancel = No");
+    const keyColor = screen ? (confirm("Which screen color?\n\nOK = Green   Cancel = Blue") ? 'green' : 'blue') : null;
+    const session = {
+      id: 'real-' + Date.now(),
+      name, screen, keyColor,
+      isReal: true,
+      photos: [],
+      count: 0
+    };
+    try{
+      await dbAddSession(session);
+    } catch(e){
+      console.error('Could not save session to IndexedDB:', e);
+    }
+    sessions.push(session);
+    renderLibrary();
+    openSession(session.id);
+  }
+
+  function importPhotos(){
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.multiple = true;
+    input.onchange = async (e) => {
+      const files = Array.from(e.target.files || []);
+      for(const file of files){
+        const thumbBlob = await makeThumbnail(file, 300);
+        const photo = {
+          id: 'photo-' + Date.now() + '-' + Math.random().toString(36).slice(2,8),
+          sessionId: currentSession.id,
+          blob: file,
+          thumbBlob,
+          order: currentSession.photos.length
+        };
+        try{
+          await dbAddPhoto(photo);
+        } catch(err){
+          console.error('Could not save photo to IndexedDB:', err);
+        }
+        currentSession.photos.push(photo);
+      }
+      currentSession.count = currentSession.photos.length;
+      try{ await dbUpdateSessionCount(currentSession.id, currentSession.count); } catch(err){}
+      document.getElementById('session-count').textContent = currentSession.count + ' photos';
+      renderSessionGrid();
+    };
+    input.click();
+  }
+
+  function renderLibrary(){
+    const list = document.getElementById('session-list');
+    list.innerHTML = '';
+    document.getElementById('session-count-label').textContent = sessions.length;
+    sessions.forEach((s) => {
+      const row = document.createElement('button');
+      row.className = 'session-row';
+      row.onclick = () => openSession(s.id);
+
+      const thumb = document.createElement('div');
+      thumb.className = 'thumb';
+      if(s.isReal){
+        if(s.photos[0]){
+          thumb.style.backgroundImage = `url(${URL.createObjectURL(s.photos[0].thumbBlob)})`;
+          thumb.style.backgroundSize = 'cover';
+          thumb.style.backgroundPosition = 'center';
+        } else {
+          thumb.style.background = 'var(--panel)';
+          thumb.textContent = '+';
+        }
+      } else {
+        thumb.style.background = `linear-gradient(135deg, ${s.demoColors[0]}, ${s.demoColors[1] || s.demoColors[0]})`;
+        thumb.textContent = s.icon;
+      }
+
+      const meta = document.createElement('div');
+      meta.className = 'session-meta';
+      meta.innerHTML = `
+        <div class="name">${s.name}${s.screen ? '<span class="screen-flag">SCREEN</span>' : ''}${!s.isReal ? '<span class="demo-flag">DEMO</span>' : ''}</div>
+        <div class="stats">${s.count} photo${s.count === 1 ? '' : 's'}</div>
+      `;
+
+      const chev = document.createElement('div');
+      chev.className = 'chev';
+      chev.textContent = '›';
+
+      row.appendChild(thumb);
+      row.appendChild(meta);
+      row.appendChild(chev);
+      list.appendChild(row);
+    });
+  }
+
+  function renderSessionGrid(){
+    const grid = document.getElementById('photo-grid');
+    grid.innerHTML = '';
+    if(currentSession.isReal){
+      currentSession.photos.forEach((p, i) => {
+        const tile = document.createElement('div');
+        tile.className = 'photo-tile';
+        tile.style.backgroundImage = `url(${URL.createObjectURL(p.thumbBlob)})`;
+        tile.style.backgroundSize = 'cover';
+        tile.style.backgroundPosition = 'center';
+        tile.onclick = () => openEditor(i);
+        grid.appendChild(tile);
+      });
+    } else {
+      currentSession.demoColors.forEach((color, i) => {
+        const tile = document.createElement('div');
+        tile.className = 'photo-tile';
+        tile.style.background = color;
+        tile.onclick = () => openEditor(i);
+        grid.appendChild(tile);
+      });
+    }
+    const importTile = document.createElement('div');
+    importTile.className = 'import-tile';
+    importTile.textContent = '+';
+    importTile.onclick = currentSession.isReal
+      ? importPhotos
+      : () => alert('This is a demo session for trying out the tools. Create a new session to import your own photos.');
+    grid.appendChild(importTile);
+  }
+
+  // ---------- synthetic photo generation (demo sessions only) ----------
+  function seededRandom(seed){
+    let t = seed += 0x6D2B79F5;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+
+  function lighten(hex, amt){
+    const c = hex.replace('#','');
+    const num = parseInt(c,16);
+    let r = (num>>16) + amt, g = ((num>>8)&0xff) + amt, b = (num&0xff) + amt;
+    r = Math.min(255,Math.max(0,r)); g = Math.min(255,Math.max(0,g)); b = Math.min(255,Math.max(0,b));
+    return `rgb(${r},${g},${b})`;
+  }
+
+  function generateRawPhoto(session, photoIdx){
+    const w = 480, h = 600;
+    const cvs = document.createElement('canvas');
+    cvs.width = w; cvs.height = h;
+    const ctx = cvs.getContext('2d');
+    const seed = hashString(session.id) + photoIdx;
+    const rnd = (n) => seededRandom(seed + n);
+
+    if(session.screen){
+      const keyRgb = session.keyColor === 'blue' ? [22,64,150] : [22,150,64];
+      const grad = ctx.createLinearGradient(0,0,0,h);
+      grad.addColorStop(0, `rgb(${keyRgb[0]+30},${keyRgb[1]+30},${keyRgb[2]+30})`);
+      grad.addColorStop(1, `rgb(${Math.max(keyRgb[0]-20,0)},${Math.max(keyRgb[1]-20,0)},${Math.max(keyRgb[2]-20,0)})`);
+      ctx.fillStyle = grad;
+      ctx.fillRect(0,0,w,h);
+      ctx.fillStyle = 'rgba(0,0,0,0.04)';
+      for(let i=0;i<40;i++){ ctx.fillRect(rnd(i)*w, rnd(i+50)*h, 2, 2); }
+
+      const cx = w/2 + (rnd(1)-0.5)*40;
+      const skinTones = ['#c99268','#e0b48c','#8a5a3c','#f0c9a0'];
+      const skin = skinTones[Math.floor(rnd(2)*skinTones.length)];
+      const clothColors = ['#3a4a5c','#5c3a3a','#3a4a3a','#4a3a5c','#5c4a2a'];
+      const cloth = clothColors[Math.floor(rnd(3)*clothColors.length)];
+
+      ctx.fillStyle = cloth;
+      ctx.beginPath();
+      ctx.moveTo(cx-110, h-40);
+      ctx.quadraticCurveTo(cx-120, h-260, cx-70, h-300);
+      ctx.lineTo(cx+70, h-300);
+      ctx.quadraticCurveTo(cx+120, h-260, cx+110, h-40);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = skin;
+      ctx.fillRect(cx-22, h-330, 44, 50);
+
+      ctx.beginPath();
+      ctx.ellipse(cx, h-370, 58, 68, 0, 0, Math.PI*2);
+      ctx.fill();
+
+      ctx.fillStyle = ['#2a1e14','#3a2a1c','#1a1a1a','#5c4530'][Math.floor(rnd(4)*4)];
+      ctx.beginPath();
+      ctx.ellipse(cx, h-405, 62, 48, 0, Math.PI, Math.PI*2);
+      ctx.fill();
+
+    } else {
+      const base = session.demoColors[photoIdx % session.demoColors.length];
+      const grad = ctx.createLinearGradient(0,0,0,h);
+      grad.addColorStop(0, lighten(base, 25));
+      grad.addColorStop(1, base);
+      ctx.fillStyle = grad;
+      ctx.fillRect(0,0,w,h);
+      ctx.fillStyle = 'rgba(255,255,255,0.03)';
+      for(let i=0;i<6;i++){
+        ctx.beginPath();
+        ctx.ellipse(rnd(i)*w, h*0.75 + rnd(i+10)*40, 60+rnd(i+20)*40, 18, 0, 0, Math.PI*2);
+        ctx.fill();
+      }
+    }
+    return cvs;
+  }
+
+  // ---------- chroma key ----------
+  function chromaKeyedCanvas(sourceCanvas, keyColor, tol){
+    const w = sourceCanvas.width, h = sourceCanvas.height;
+    const out = document.createElement('canvas');
+    out.width = w; out.height = h;
+    const ctx = out.getContext('2d');
+    ctx.drawImage(sourceCanvas, 0, 0);
+    const imgData = ctx.getImageData(0,0,w,h);
+    const d = imgData.data;
+    const threshold = 200 - tol*1.8;
+    const band = 25;
+    for(let i=0;i<d.length;i+=4){
+      const r=d[i], g=d[i+1], b=d[i+2];
+      const spill = keyColor === 'blue' ? (b - Math.max(r,g)) : (g - Math.max(r,b));
+      if(spill > threshold + band){
+        d[i+3] = 0;
+      } else if(spill > threshold - band){
+        const alpha = 1 - (spill - (threshold-band)) / (band*2);
+        d[i+3] = Math.max(0, Math.min(255, alpha*255));
+        if(keyColor === 'blue'){ d[i+2] = Math.min(d[i+2], Math.max(r,g)); }
+        else { d[i+1] = Math.min(d[i+1], Math.max(r,b)); }
+      }
+    }
+    ctx.putImageData(imgData, 0, 0);
+    return out;
+  }
+
+  // ---------- light & color adjustments (applied to the photo, never the backdrop) ----------
+  function applyLightColorAdjustments(sourceCanvas){
+    const w = sourceCanvas.width, h = sourceCanvas.height;
+    const out = document.createElement('canvas');
+    out.width = w; out.height = h;
+    const ctx = out.getContext('2d');
+    ctx.drawImage(sourceCanvas, 0, 0);
+
+    const noneSet = Object.values(lightAdjust).every(v => v === 0) && Object.values(colorAdjust).every(v => v === 0);
+    if(noneSet) return out;
+
+    const imgData = ctx.getImageData(0,0,w,h);
+    const d = imgData.data;
+
+    const expFactor = Math.pow(2, lightAdjust.exposure/100);
+    const contrastFactor = 1 + lightAdjust.contrast/100;
+    const highlights = lightAdjust.highlights;
+    const shadows = lightAdjust.shadows;
+    const tempShift = colorAdjust.temperature;
+    const tintShift = colorAdjust.tint;
+    const satFactor = 1 + colorAdjust.saturation/100;
+
+    for(let i=0;i<d.length;i+=4){
+      let r = d[i], g = d[i+1], b = d[i+2];
+
+      r *= expFactor; g *= expFactor; b *= expFactor;
+
+      r = (r-128)*contrastFactor + 128;
+      g = (g-128)*contrastFactor + 128;
+      b = (b-128)*contrastFactor + 128;
+
+      const lum = 0.299*r + 0.587*g + 0.114*b;
+      if(lum > 160 && highlights !== 0){
+        const amt = highlights/100 * 60 * Math.min(1,(lum-160)/95);
+        r += amt; g += amt; b += amt;
+      }
+      if(lum < 96 && shadows !== 0){
+        const amt = shadows/100 * 60 * Math.min(1,(96-lum)/96);
+        r += amt; g += amt; b += amt;
+      }
+
+      r += tempShift*0.4;
+      b -= tempShift*0.4;
+      g -= tintShift*0.4;
+
+      const gray = 0.299*r + 0.587*g + 0.114*b;
+      r = gray + (r-gray)*satFactor;
+      g = gray + (g-gray)*satFactor;
+      b = gray + (b-gray)*satFactor;
+
+      d[i] = Math.max(0,Math.min(255,r));
+      d[i+1] = Math.max(0,Math.min(255,g));
+      d[i+2] = Math.max(0,Math.min(255,b));
+    }
+    ctx.putImageData(imgData, 0, 0);
+    return out;
+  }
+
+  function fmtSigned(n){
+    if(n === 0) return '0';
+    return n > 0 ? '+' + n : '−' + Math.abs(n);
+  }
+
+  function setLightAdjust(key, val){
+    lightAdjust[key] = parseInt(val, 10);
+    renderLightColorUI();
+    renderComposite();
+  }
+
+  function setColorAdjust(key, val){
+    colorAdjust[key] = parseInt(val, 10);
+    renderLightColorUI();
+    renderComposite();
+  }
+
+  function renderLightColorUI(){
+    document.getElementById('exposure-slider').value = lightAdjust.exposure;
+    document.getElementById('exposure-val').textContent = fmtSigned(lightAdjust.exposure);
+    document.getElementById('contrast-slider').value = lightAdjust.contrast;
+    document.getElementById('contrast-val').textContent = fmtSigned(lightAdjust.contrast);
+    document.getElementById('highlights-slider').value = lightAdjust.highlights;
+    document.getElementById('highlights-val').textContent = fmtSigned(lightAdjust.highlights);
+    document.getElementById('shadows-slider').value = lightAdjust.shadows;
+    document.getElementById('shadows-val').textContent = fmtSigned(lightAdjust.shadows);
+
+    document.getElementById('temperature-slider').value = colorAdjust.temperature;
+    const t = colorAdjust.temperature;
+    document.getElementById('temperature-val').textContent = t === 0 ? 'Neutral' : (t > 0 ? 'Warm ' + fmtSigned(t) : 'Cool ' + fmtSigned(t));
+    document.getElementById('tint-slider').value = colorAdjust.tint;
+    document.getElementById('tint-val').textContent = fmtSigned(colorAdjust.tint);
+    document.getElementById('saturation-slider').value = colorAdjust.saturation;
+    document.getElementById('saturation-val').textContent = fmtSigned(colorAdjust.saturation);
+  }
+
+  // ---------- scene backdrop art ----------
+  function drawAutumnGrove(ctx,w,h){
+    const g = ctx.createLinearGradient(0,0,0,h);
+    g.addColorStop(0,'#9a6a3a'); g.addColorStop(1,'#4a3320');
+    ctx.fillStyle = g; ctx.fillRect(0,0,w,h);
+    const leafColors = ['#c98a3c','#a8542e','#d9a94a'];
+    for(let i=0;i<50;i++){
+      ctx.fillStyle = leafColors[i%3];
+      ctx.globalAlpha = 0.5;
+      ctx.beginPath();
+      ctx.ellipse((i*97)%w, (i*53)%h, 10, 5, i, 0, Math.PI*2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawMarbleStudio(ctx,w,h){
+    ctx.fillStyle = '#8a8478'; ctx.fillRect(0,0,w,h);
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    for(let i=0;i<10;i++){
+      ctx.beginPath();
+      ctx.moveTo((i*53)%w, 0);
+      ctx.bezierCurveTo((i*37)%w,h*0.3,(i*71)%w,h*0.7,(i*29)%w,h);
+      ctx.lineWidth = 1+(i%3);
+      ctx.stroke();
+    }
+  }
+
+  function drawSoftClouds(ctx,w,h){
+    const g = ctx.createLinearGradient(0,0,0,h);
+    g.addColorStop(0,'#b8c4cc'); g.addColorStop(1,'#7c8a94');
+    ctx.fillStyle = g; ctx.fillRect(0,0,w,h);
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    for(let i=0;i<8;i++){
+      ctx.beginPath();
+      ctx.ellipse((i*73)%w, 80+(i*61)%(h*0.6), 70, 30, 0, 0, Math.PI*2);
+      ctx.fill();
+    }
+  }
+
+  function drawBrickWall(ctx,w,h){
+    ctx.fillStyle = '#6a3226'; ctx.fillRect(0,0,w,h);
+    ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+    ctx.lineWidth = 3;
+    const bh = 30, bw = 60;
+    for(let row=0, y=0; y<h; row++, y+=bh){
+      const offset = row%2===0 ? 0 : bw/2;
+      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke();
+      for(let x=-offset; x<w; x+=bw){
+        ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x,y+bh); ctx.stroke();
+      }
+    }
+  }
+
+  function drawCityBokeh(ctx,w,h){
+    ctx.fillStyle = '#241f30'; ctx.fillRect(0,0,w,h);
+    const colors = ['#f0c96a','#e0824a','#7ca0c9'];
+    for(let i=0;i<25;i++){
+      ctx.fillStyle = colors[i%3];
+      ctx.globalAlpha = 0.35;
+      const r = 15+ (i%5)*8;
+      ctx.beginPath();
+      ctx.arc((i*113)%w, (i*89)%h, r, 0, Math.PI*2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawLibrary(ctx,w,h){
+    ctx.fillStyle = '#4a3722'; ctx.fillRect(0,0,w,h);
+    const shelfColors = ['#6a4a2c','#5a3e28','#7a5632'];
+    for(let x=0; x<w; x+=18){
+      ctx.fillStyle = shelfColors[Math.floor(x/18)%3];
+      ctx.fillRect(x, h*0.15, 14, h*0.55);
+    }
+  }
+
+  function drawSeamlessNavy(ctx,w,h){
+    const g = ctx.createLinearGradient(0,0,0,h);
+    g.addColorStop(0,'#2c3a52'); g.addColorStop(1,'#141c2c');
+    ctx.fillStyle = g; ctx.fillRect(0,0,w,h);
+  }
+
+  // ---------- compositing ----------
+  function computeFullComposite(){
+    const w = 480, h = 600;
+    const cvs = document.createElement('canvas');
+    cvs.width = w; cvs.height = h;
+    const ctx = cvs.getContext('2d');
+    if(!rawCanvas) return cvs;
+    const photoCanvas = applyLightColorAdjustments(rawCanvas);
+
+    if(selectedScene !== null){
+      sceneBackdrops[selectedScene].draw(ctx, w, h);
+      const keyed = chromaKeyedCanvas(photoCanvas, selectedKeyColor, tolerance);
+      ctx.drawImage(keyed, 0, 0);
+    } else if(selectedNeutral !== null){
+      const n = neutralBackdrops[selectedNeutral];
+      if(n.fill === 'checker'){
+        const sq = 24;
+        for(let y=0;y<h;y+=sq){
+          for(let x=0;x<w;x+=sq){
+            ctx.fillStyle = ((x/sq + y/sq) % 2 === 0) ? '#3a3630' : '#26231F';
+            ctx.fillRect(x,y,sq,sq);
+          }
+        }
+      } else {
+        ctx.fillStyle = n.fill;
+        ctx.fillRect(0,0,w,h);
+      }
+      const pad = 46;
+      ctx.drawImage(photoCanvas, pad, pad, w-pad*2, h-pad*2);
+    } else {
+      ctx.drawImage(photoCanvas, 0, 0);
+    }
+    return cvs;
+  }
+
+  function isCropTabActive(){
+    const el = document.getElementById('tool-crop');
+    return !!el && !el.classList.contains('hidden');
+  }
+
+  function renderComposite(){
+    const full = computeFullComposite();
+    const displayCanvas = document.getElementById('editor-photo');
+    const dctx = displayCanvas.getContext('2d');
+    const showingCrop = isCropTabActive();
+
+    if(showingCrop || !cropRect){
+      displayCanvas.width = 480;
+      displayCanvas.height = 600;
+      displayCanvas.style.aspectRatio = '4 / 5';
+      dctx.clearRect(0,0,480,600);
+      dctx.drawImage(full, 0, 0);
+      if(showingCrop){ renderCropOverlay(); } else { hideCropOverlay(); }
+    } else {
+      const r = cropRect;
+      displayCanvas.width = Math.round(r.w);
+      displayCanvas.height = Math.round(r.h);
+      displayCanvas.style.aspectRatio = (r.w / r.h).toString();
+      dctx.clearRect(0,0,r.w,r.h);
+      dctx.drawImage(full, r.x, r.y, r.w, r.h, 0, 0, r.w, r.h);
+      hideCropOverlay();
+    }
+  }
+
+  // ---------- crop tool ----------
+  function setCropAspect(mode){
+    pushHistory();
+    cropAspectMode = mode;
+    const w = 480, h = 600;
+    let rw, rh;
+    if(mode === '4:5'){ rw = 480; rh = 600; }
+    else if(mode === '1:1'){ rw = 480; rh = 480; }
+    else if(mode === '16:9'){ rw = 480; rh = 270; }
+    else { rw = (cropRect && cropRect.w) || 360; rh = (cropRect && cropRect.h) || 450; }
+    cropRect = { x: (w-rw)/2, y: (h-rh)/2, w: rw, h: rh };
+    renderCropAspectButtons();
+    renderComposite();
+  }
+
+  function renderCropAspectButtons(){
+    document.querySelectorAll('#tool-crop .yn-btn').forEach(btn => {
+      btn.classList.toggle('selected', btn.dataset.aspect === cropAspectMode);
+    });
+  }
+
+  function renderCropOverlay(){
+    const overlay = document.getElementById('crop-overlay');
+    const canvas = document.getElementById('editor-photo');
+    if(!overlay || !canvas) return;
+    const canvasRect = canvas.getBoundingClientRect();
+    const parentRect = canvas.parentElement.getBoundingClientRect();
+    overlay.classList.add('active');
+    overlay.style.left = (canvasRect.left - parentRect.left) + 'px';
+    overlay.style.top = (canvasRect.top - parentRect.top) + 'px';
+    overlay.style.width = canvasRect.width + 'px';
+    overlay.style.height = canvasRect.height + 'px';
+
+    const scaleX = canvasRect.width / 480, scaleY = canvasRect.height / 600;
+    const r = cropRect || { x:0, y:0, w:480, h:600 };
+
+    let rectDiv = overlay.querySelector('.crop-rect');
+    if(!rectDiv){
+      rectDiv = document.createElement('div');
+      rectDiv.className = 'crop-rect';
+      const handle = document.createElement('div');
+      handle.className = 'crop-handle';
+      rectDiv.appendChild(handle);
+      overlay.appendChild(rectDiv);
+      attachCropDragHandlers(rectDiv, handle);
+    }
+    rectDiv.style.left = (r.x*scaleX) + 'px';
+    rectDiv.style.top = (r.y*scaleY) + 'px';
+    rectDiv.style.width = (r.w*scaleX) + 'px';
+    rectDiv.style.height = (r.h*scaleY) + 'px';
+    rectDiv.querySelector('.crop-handle').style.display = cropAspectMode === 'free' ? 'block' : 'none';
+  }
+
+  function hideCropOverlay(){
+    const overlay = document.getElementById('crop-overlay');
+    if(overlay) overlay.classList.remove('active');
+  }
+
+  function attachCropDragHandlers(rectDiv, handle){
+    let dragMode = null;
+    let startClientX = 0, startClientY = 0, startRect = null;
+
+    function onDown(e, mode){
+      if(mode === 'move' && cropAspectMode !== 'free') return; // fixed-aspect crops stay centered
+      dragMode = mode;
+      startClientX = e.clientX; startClientY = e.clientY;
+      startRect = { ...cropRect };
+      pushHistory();
+      e.stopPropagation();
+      e.preventDefault();
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', onUp);
+    }
+    rectDiv.addEventListener('pointerdown', (e) => { if(e.target === handle) return; onDown(e, 'move'); });
+    handle.addEventListener('pointerdown', (e) => onDown(e, 'resize'));
+
+    function onMove(e){
+      if(!dragMode) return;
+      const canvas = document.getElementById('editor-photo');
+      const canvasRect = canvas.getBoundingClientRect();
+      const scaleX = 480 / canvasRect.width, scaleY = 600 / canvasRect.height;
+      const dx = (e.clientX - startClientX) * scaleX;
+      const dy = (e.clientY - startClientY) * scaleY;
+      if(dragMode === 'move'){
+        let nx = startRect.x + dx, ny = startRect.y + dy;
+        nx = Math.max(0, Math.min(480 - startRect.w, nx));
+        ny = Math.max(0, Math.min(600 - startRect.h, ny));
+        cropRect = { ...cropRect, x: nx, y: ny };
+      } else {
+        let nw = Math.max(60, Math.min(480 - startRect.x, startRect.w + dx));
+        let nh = Math.max(60, Math.min(600 - startRect.y, startRect.h + dy));
+        cropRect = { ...cropRect, w: nw, h: nh };
+      }
+      renderCropOverlay();
+    }
+    function onUp(){
+      dragMode = null;
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      renderComposite();
+    }
+  }
+
+  // ---------- export ----------
+  function safeName(s){
+    return (s || 'session').replace(/[^a-z0-9]+/gi, '-').toLowerCase().replace(/^-+|-+$/g, '') || 'session';
+  }
+
+  function exportCurrentPhoto(){
+    if(!rawCanvas || !currentSession) return;
+    const full = computeFullComposite();
+    const r = cropRect || { x:0, y:0, w:480, h:600 };
+    const out = document.createElement('canvas');
+    out.width = Math.round(r.w); out.height = Math.round(r.h);
+    out.getContext('2d').drawImage(full, r.x, r.y, r.w, r.h, 0, 0, r.w, r.h);
+    out.toBlob((blob) => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${safeName(currentSession.name)}-photo-${currentPhotoIdx+1}.jpg`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    }, 'image/jpeg', 0.92);
+  }
+
+  async function renderPhotoWithEdits(photo, session){
+    // temporarily borrow the editor's working globals to reuse the same render pipeline
+    const backup = { rawCanvas, selectedScene, selectedNeutral, selectedKeyColor, tolerance, lightAdjust, colorAdjust, cropRect };
+    rawCanvas = await loadRealPhotoToCanvas(photo);
+    const e = photo.edits;
+    if(e){
+      selectedScene = e.selectedScene; selectedNeutral = e.selectedNeutral;
+      selectedKeyColor = e.selectedKeyColor; tolerance = e.tolerance;
+      lightAdjust = { ...e.lightAdjust }; colorAdjust = { ...e.colorAdjust };
+      cropRect = e.cropRect ? { ...e.cropRect } : null;
+    } else {
+      selectedScene = null; selectedNeutral = null;
+      selectedKeyColor = session.keyColor || 'green'; tolerance = 65;
+      lightAdjust = { exposure:0, contrast:0, highlights:0, shadows:0 };
+      colorAdjust = { temperature:0, tint:0, saturation:0 };
+      cropRect = null;
+    }
+    const full = computeFullComposite();
+    const r = cropRect || { x:0, y:0, w:480, h:600 };
+    const out = document.createElement('canvas');
+    out.width = Math.round(r.w); out.height = Math.round(r.h);
+    out.getContext('2d').drawImage(full, r.x, r.y, r.w, r.h, 0, 0, r.w, r.h);
+
+    rawCanvas = backup.rawCanvas; selectedScene = backup.selectedScene; selectedNeutral = backup.selectedNeutral;
+    selectedKeyColor = backup.selectedKeyColor; tolerance = backup.tolerance;
+    lightAdjust = backup.lightAdjust; colorAdjust = backup.colorAdjust; cropRect = backup.cropRect;
+
+    return new Promise(resolve => out.toBlob(resolve, 'image/jpeg', 0.92));
+  }
+
+  async function exportSession(){
+    if(!currentSession) return;
+    if(!currentSession.isReal){
+      alert('This is a demo session for trying out the tools. Create a new session and import your own photos to export.');
+      return;
+    }
+    if(currentSession.photos.length === 0){
+      alert('Import some photos into this session first.');
+      return;
+    }
+    const btn = document.getElementById('session-export-btn');
+    const originalLabel = btn.textContent;
+    btn.textContent = 'Zipping…';
+    btn.disabled = true;
+    try{
+      const zip = new JSZip();
+      const folder = zip.folder(safeName(currentSession.name));
+      for(let i=0; i<currentSession.photos.length; i++){
+        const blob = await renderPhotoWithEdits(currentSession.photos[i], currentSession);
+        folder.file(`photo-${i+1}.jpg`, blob);
+      }
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(zipBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${safeName(currentSession.name)}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    } catch(e){
+      console.error('Export failed:', e);
+      alert('Export failed — see console for details.');
+    } finally {
+      btn.textContent = originalLabel;
+      btn.disabled = false;
+    }
+  }
+
+  async function saveCurrentEditsToPhoto(){
+    if(!currentSession || !currentSession.isReal) return;
+    const photo = currentSession.photos[currentPhotoIdx];
+    if(!photo) return;
+    photo.edits = {
+      screenAnswer, selectedScene, selectedNeutral, selectedKeyColor, tolerance,
+      lightAdjust: { ...lightAdjust }, colorAdjust: { ...colorAdjust },
+      cropRect: cropRect ? { ...cropRect } : null, cropAspectMode
+    };
+    try{ await dbUpdatePhotoEdits(photo.id, photo.edits); } catch(e){ console.error('Could not save edits:', e); }
+  }
+
+  async function backToSession(){
+    await saveCurrentEditsToPhoto();
+    goTo('session');
+  }
+
+  function goTo(id){
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    document.querySelector('.device').scrollTop = 0;
+  }
+
+  function openSession(sessionId){
+    currentSession = sessions.find(s => s.id === sessionId);
+    document.getElementById('session-title').textContent = currentSession.name;
+    document.getElementById('session-count').textContent = currentSession.count + ' photos';
+    document.getElementById('session-screen-tag').innerHTML = currentSession.screen
+      ? '<span class="screen-flag">SCREEN</span>'
+      : '';
+    renderSessionGrid();
+    goTo('session');
+  }
+
+  async function openEditor(photoIdx){
+    currentPhotoIdx = photoIdx;
+    const s = currentSession;
+    document.getElementById('editor-title').textContent = s.name;
+    document.getElementById('frame-counter').textContent = `Photo ${photoIdx+1} of ${s.count}`;
+    document.getElementById('photo-source-note').textContent = s.isReal ? 'Your imported photo' : 'Synthetic demo photo';
+
+    const savedEdits = (s.isReal && s.photos[photoIdx]) ? s.photos[photoIdx].edits : null;
+    if(savedEdits){
+      screenAnswer = savedEdits.screenAnswer;
+      selectedNeutral = savedEdits.selectedNeutral;
+      selectedScene = savedEdits.selectedScene;
+      selectedKeyColor = savedEdits.selectedKeyColor;
+      tolerance = savedEdits.tolerance;
+      lightAdjust = { ...savedEdits.lightAdjust };
+      colorAdjust = { ...savedEdits.colorAdjust };
+      cropRect = savedEdits.cropRect ? { ...savedEdits.cropRect } : null;
+      cropAspectMode = savedEdits.cropAspectMode || '4:5';
+    } else {
+      screenAnswer = s.screen;
+      selectedNeutral = null;
+      selectedScene = null;
+      selectedKeyColor = s.keyColor || 'green';
+      tolerance = 65;
+      lightAdjust = { exposure: 0, contrast: 0, highlights: 0, shadows: 0 };
+      colorAdjust = { temperature: 0, tint: 0, saturation: 0 };
+      cropRect = null;
+      cropAspectMode = '4:5';
+    }
+    editHistory = [];
+    redoStack = [];
+    updateUndoButton();
+
+    goTo('editor');
+    selectTool('backdrop');
+    renderBackdropTool();
+    renderLightColorUI();
+    renderCropAspectButtons();
+
+    if(s.isReal){
+      rawCanvas = await loadRealPhotoToCanvas(s.photos[photoIdx]);
+    } else {
+      rawCanvas = generateRawPhoto(s, photoIdx);
+    }
+    renderComposite();
+  }
+
+  function resetEdits(){
+    pushHistory();
+    selectedScene = null;
+    selectedNeutral = null;
+    tolerance = 65;
+    lightAdjust = { exposure: 0, contrast: 0, highlights: 0, shadows: 0 };
+    colorAdjust = { temperature: 0, tint: 0, saturation: 0 };
+    cropRect = null;
+    cropAspectMode = '4:5';
+    renderBackdropTool();
+    renderLightColorUI();
+    renderCropAspectButtons();
+    renderComposite();
+  }
+
+  async function nextPhoto(){
+    await saveCurrentEditsToPhoto();
+    const count = currentSession.isReal ? currentSession.photos.length : currentSession.demoColors.length;
+    if(count === 0) return;
+    openEditor((currentPhotoIdx + 1) % count);
+  }
+
+  function selectTool(tool){
+    document.querySelectorAll('.tool-tab').forEach(t => t.classList.toggle('active', t.dataset.tool === tool));
+    ['backdrop','light','color','crop'].forEach(t => {
+      document.getElementById('tool-' + t).classList.toggle('hidden', t !== tool);
+    });
+    renderComposite();
+  }
+
+  function setScreenAnswer(answer){
+    pushHistory();
+    screenAnswer = answer;
+    selectedScene = null;
+    renderBackdropTool();
+    renderComposite();
+  }
+
+  function setKeyColor(color){
+    pushHistory();
+    selectedKeyColor = color;
+    renderBackdropTool();
+    if(selectedScene !== null) renderComposite();
+  }
+
+  function setTolerance(val){
+    tolerance = parseInt(val,10);
+    document.getElementById('tolerance-val').textContent = tolerance;
+    if(selectedScene !== null) renderComposite();
+  }
+
+  function renderBackdropTool(){
+    document.getElementById('yn-yes').classList.toggle('selected', screenAnswer === true);
+    document.getElementById('yn-no').classList.toggle('selected', screenAnswer === false);
+    document.getElementById('key-controls').style.display = screenAnswer === true ? 'block' : 'none';
+    document.getElementById('key-green').classList.toggle('selected', selectedKeyColor === 'green');
+    document.getElementById('key-blue').classList.toggle('selected', selectedKeyColor === 'blue');
+    document.getElementById('tolerance-slider').value = tolerance;
+    document.getElementById('tolerance-val').textContent = tolerance;
+
+    document.getElementById('backdrop-scene-block').style.display = screenAnswer === true ? 'block' : 'none';
+    document.getElementById('backdrop-neutral-note').style.display = screenAnswer === false ? 'block' : 'none';
+
+    const sceneGrid = document.getElementById('scene-swatches');
+    sceneGrid.innerHTML = '';
+    sceneBackdrops.forEach((b, i) => {
+      const el = document.createElement('div');
+      el.className = 'swatch' + (b.upload ? ' swatch-upload' : '') + (selectedScene === i ? ' selected' : '');
+      if(b.upload){
+        el.textContent = '+';
+        el.onclick = () => alert('Mockup: would let you upload a custom backdrop image for scene swap.');
+      } else {
+        el.style.background = b.css;
+        el.innerHTML = `<span class="sname">${b.name}</span>`;
+        el.onclick = () => { pushHistory(); selectedScene = i; selectedNeutral = null; applyBackdrop(); };
+      }
+      sceneGrid.appendChild(el);
+    });
+
+    const neutralGrid = document.getElementById('neutral-swatches');
+    neutralGrid.innerHTML = '';
+    neutralBackdrops.forEach((b, i) => {
+      const el = document.createElement('div');
+      el.className = 'swatch' + (selectedNeutral === i ? ' selected' : '');
+      el.style.background = b.css;
+      el.innerHTML = `<span class="sname" style="${b.dark ? 'color:rgba(0,0,0,.6); text-shadow:none;' : ''}">${b.name}</span>`;
+      el.onclick = () => { pushHistory(); selectedNeutral = i; selectedScene = null; applyBackdrop(); };
+      neutralGrid.appendChild(el);
+    });
+  }
+
+  function applyBackdrop(){
+    renderBackdropTool();
+    renderComposite();
+  }
+
+  ['tolerance-slider','exposure-slider','contrast-slider','highlights-slider','shadows-slider','temperature-slider','tint-slider','saturation-slider']
+    .forEach(wireSliderHistory);
+
+  loadRealSessions();
+</script>
+</body>
+</html>
