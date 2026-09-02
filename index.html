@@ -333,6 +333,24 @@
   .tool-panel .hidden{ display:none; }
 
   /* light/color sliders (decorative, non-functional in mockup) */
+  #curve-svg{
+    width:100%;
+    aspect-ratio:1;
+    background:var(--panel);
+    border:1px solid var(--hair);
+    border-radius:var(--radius);
+    touch-action:none;
+    display:block;
+  }
+  .hsl-chip{
+    width:36px; height:36px;
+    border-radius:50%;
+    border:2px solid transparent;
+    cursor:pointer;
+    flex-shrink:0;
+  }
+  .hsl-chip.selected{ border-color:var(--text); }
+
   .slider-row{
     margin-bottom:16px;
   }
@@ -598,40 +616,78 @@
 
       <!-- LIGHT TOOL -->
       <div id="tool-light" class="hidden">
-        <div class="slider-row">
-          <div class="label-row"><span>Exposure</span><span class="val" id="exposure-val">0</span></div>
-          <input type="range" id="exposure-slider" min="-100" max="100" value="0" oninput="setLightAdjust('exposure', this.value)" style="width:100%; accent-color:#C9A15C;">
+        <div class="yn-row" style="margin-bottom:18px;">
+          <button class="yn-btn selected" data-lightsub="basic" onclick="selectLightSub('basic')">Basic</button>
+          <button class="yn-btn" data-lightsub="curve" onclick="selectLightSub('curve')">Curve</button>
         </div>
-        <div class="slider-row">
-          <div class="label-row"><span>Contrast</span><span class="val" id="contrast-val">0</span></div>
-          <input type="range" id="contrast-slider" min="-100" max="100" value="0" oninput="setLightAdjust('contrast', this.value)" style="width:100%; accent-color:#C9A15C;">
+
+        <div id="light-basic">
+          <div class="slider-row">
+            <div class="label-row"><span>Exposure</span><span class="val" id="exposure-val">0</span></div>
+            <input type="range" id="exposure-slider" min="-100" max="100" value="0" oninput="setLightAdjust('exposure', this.value)" style="width:100%; accent-color:#C9A15C;">
+          </div>
+          <div class="slider-row">
+            <div class="label-row"><span>Contrast</span><span class="val" id="contrast-val">0</span></div>
+            <input type="range" id="contrast-slider" min="-100" max="100" value="0" oninput="setLightAdjust('contrast', this.value)" style="width:100%; accent-color:#C9A15C;">
+          </div>
+          <div class="slider-row">
+            <div class="label-row"><span>Highlights</span><span class="val" id="highlights-val">0</span></div>
+            <input type="range" id="highlights-slider" min="-100" max="100" value="0" oninput="setLightAdjust('highlights', this.value)" style="width:100%; accent-color:#C9A15C;">
+          </div>
+          <div class="slider-row">
+            <div class="label-row"><span>Shadows</span><span class="val" id="shadows-val">0</span></div>
+            <input type="range" id="shadows-slider" min="-100" max="100" value="0" oninput="setLightAdjust('shadows', this.value)" style="width:100%; accent-color:#C9A15C;">
+          </div>
+          <div class="placeholder-note">Adjustments apply to the photo itself — a swapped-in scene backdrop is left as-is.</div>
         </div>
-        <div class="slider-row">
-          <div class="label-row"><span>Highlights</span><span class="val" id="highlights-val">0</span></div>
-          <input type="range" id="highlights-slider" min="-100" max="100" value="0" oninput="setLightAdjust('highlights', this.value)" style="width:100%; accent-color:#C9A15C;">
+
+        <div id="light-curve" class="hidden">
+          <svg id="curve-svg" viewBox="0 0 255 255" preserveAspectRatio="none"></svg>
+          <button class="yn-btn" style="width:100%; margin-top:12px;" onclick="resetCurve()">Reset curve</button>
+          <div class="placeholder-note">Tap the graph to add a point, drag a point to reshape the curve, double-tap a point to remove it.</div>
         </div>
-        <div class="slider-row">
-          <div class="label-row"><span>Shadows</span><span class="val" id="shadows-val">0</span></div>
-          <input type="range" id="shadows-slider" min="-100" max="100" value="0" oninput="setLightAdjust('shadows', this.value)" style="width:100%; accent-color:#C9A15C;">
-        </div>
-        <div class="placeholder-note">Adjustments apply to the photo itself — a swapped-in scene backdrop is left as-is.</div>
       </div>
 
       <!-- COLOR TOOL -->
       <div id="tool-color" class="hidden">
-        <div class="slider-row">
-          <div class="label-row"><span>Temperature</span><span class="val" id="temperature-val">Neutral</span></div>
-          <input type="range" id="temperature-slider" min="-100" max="100" value="0" oninput="setColorAdjust('temperature', this.value)" style="width:100%; accent-color:#C98E5C;">
+        <div class="yn-row" style="margin-bottom:18px;">
+          <button class="yn-btn selected" data-colorsub="basic" onclick="selectColorSub('basic')">Basic</button>
+          <button class="yn-btn" data-colorsub="mixer" onclick="selectColorSub('mixer')">Mixer</button>
         </div>
-        <div class="slider-row">
-          <div class="label-row"><span>Tint</span><span class="val" id="tint-val">0</span></div>
-          <input type="range" id="tint-slider" min="-100" max="100" value="0" oninput="setColorAdjust('tint', this.value)" style="width:100%; accent-color:#C9A15C;">
+
+        <div id="color-basic">
+          <div class="slider-row">
+            <div class="label-row"><span>Temperature</span><span class="val" id="temperature-val">Neutral</span></div>
+            <input type="range" id="temperature-slider" min="-100" max="100" value="0" oninput="setColorAdjust('temperature', this.value)" style="width:100%; accent-color:#C98E5C;">
+          </div>
+          <div class="slider-row">
+            <div class="label-row"><span>Tint</span><span class="val" id="tint-val">0</span></div>
+            <input type="range" id="tint-slider" min="-100" max="100" value="0" oninput="setColorAdjust('tint', this.value)" style="width:100%; accent-color:#C9A15C;">
+          </div>
+          <div class="slider-row">
+            <div class="label-row"><span>Saturation</span><span class="val" id="saturation-val">0</span></div>
+            <input type="range" id="saturation-slider" min="-100" max="100" value="0" oninput="setColorAdjust('saturation', this.value)" style="width:100%; accent-color:#C9A15C;">
+          </div>
+          <div class="placeholder-note">Presets (portrait, moody, bright/airy) are a good next addition once these feel right.</div>
         </div>
-        <div class="slider-row">
-          <div class="label-row"><span>Saturation</span><span class="val" id="saturation-val">0</span></div>
-          <input type="range" id="saturation-slider" min="-100" max="100" value="0" oninput="setColorAdjust('saturation', this.value)" style="width:100%; accent-color:#C9A15C;">
+
+        <div id="color-mixer" class="hidden">
+          <div class="swatch-label" style="margin-bottom:10px;">COLOR RANGE</div>
+          <div id="hsl-band-chips" style="display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap;"></div>
+          <div class="slider-row">
+            <div class="label-row"><span>Hue</span><span class="val" id="hsl-hue-val">0</span></div>
+            <input type="range" id="hsl-hue-slider" min="-60" max="60" value="0" oninput="setHslAdjust('h', this.value)" style="width:100%; accent-color:#C9A15C;">
+          </div>
+          <div class="slider-row">
+            <div class="label-row"><span>Saturation</span><span class="val" id="hsl-sat-val">0</span></div>
+            <input type="range" id="hsl-sat-slider" min="-100" max="100" value="0" oninput="setHslAdjust('s', this.value)" style="width:100%; accent-color:#C9A15C;">
+          </div>
+          <div class="slider-row">
+            <div class="label-row"><span>Luminance</span><span class="val" id="hsl-lum-val">0</span></div>
+            <input type="range" id="hsl-lum-slider" min="-100" max="100" value="0" oninput="setHslAdjust('l', this.value)" style="width:100%; accent-color:#C9A15C;">
+          </div>
+          <div class="placeholder-note">Pick a color range, then push its hue, saturation, or luminance independently of the rest of the photo.</div>
         </div>
-        <div class="placeholder-note">One-tap presets (portrait, moody, bright/airy) are a good next addition once these feel right.</div>
       </div>
 
       <!-- CROP TOOL -->
@@ -722,6 +778,28 @@
   let colorAdjust = { temperature: 0, tint: 0, saturation: 0 };
   let cropRect = null; // {x,y,w,h} in 480x600 space, or null = full uncropped frame
   let cropAspectMode = '4:5';
+  let toneCurve = [ {x:0,y:0}, {x:255,y:255} ]; // control points, identity = no change
+  let hslAdjust = {
+    red:     { h:0, s:0, l:0 },
+    orange:  { h:0, s:0, l:0 },
+    yellow:  { h:0, s:0, l:0 },
+    green:   { h:0, s:0, l:0 },
+    aqua:    { h:0, s:0, l:0 },
+    blue:    { h:0, s:0, l:0 },
+    purple:  { h:0, s:0, l:0 },
+    magenta: { h:0, s:0, l:0 }
+  };
+  let selectedHslBand = 'red';
+  const HSL_BANDS = {
+    red:     { center: 0,   color: '#e04444' },
+    orange:  { center: 30,  color: '#e08a3c' },
+    yellow:  { center: 60,  color: '#d9c93c' },
+    green:   { center: 120, color: '#5cb85c' },
+    aqua:    { center: 180, color: '#3cc9c9' },
+    blue:    { center: 240, color: '#4a6ee0' },
+    purple:  { center: 275, color: '#8a5cd9' },
+    magenta: { center: 320, color: '#d94aa0' }
+  };
   let editHistory = []; // stack of prior states, for Undo
   let redoStack = [];
   let pendingDragSnapshot = null;
@@ -731,7 +809,10 @@
     return {
       screenAnswer, selectedScene, selectedNeutral, selectedKeyColor, tolerance,
       lightAdjust: {...lightAdjust}, colorAdjust: {...colorAdjust},
-      cropRect: cropRect ? {...cropRect} : null, cropAspectMode
+      cropRect: cropRect ? {...cropRect} : null, cropAspectMode,
+      toneCurve: toneCurve.map(p => ({...p})),
+      hslAdjust: JSON.parse(JSON.stringify(hslAdjust)),
+      selectedHslBand
     };
   }
 
@@ -745,9 +826,13 @@
     colorAdjust = {...state.colorAdjust};
     cropRect = state.cropRect ? {...state.cropRect} : null;
     cropAspectMode = state.cropAspectMode;
+    toneCurve = (state.toneCurve || [{x:0,y:0},{x:255,y:255}]).map(p => ({...p}));
+    hslAdjust = state.hslAdjust ? JSON.parse(JSON.stringify(state.hslAdjust)) : hslAdjust;
+    selectedHslBand = state.selectedHslBand || 'red';
     renderBackdropTool();
     renderLightColorUI();
     renderCropAspectButtons();
+    if(!document.getElementById('light-curve').classList.contains('hidden')) renderCurveEditor();
     renderComposite();
   }
 
@@ -1299,6 +1384,100 @@
   }
 
   // ---------- light & color adjustments (applied to the photo, never the backdrop) ----------
+  // ---------- tone curve ----------
+  function catmullRom(p0,p1,p2,p3,t){
+    const t2=t*t, t3=t2*t;
+    return 0.5*((2*p1) + (-p0+p2)*t + (2*p0-5*p1+4*p2-p3)*t2 + (-p0+3*p1-3*p2+p3)*t3);
+  }
+
+  function evalCurve(pts, x){
+    if(x <= pts[0].x) return pts[0].y;
+    if(x >= pts[pts.length-1].x) return pts[pts.length-1].y;
+    let i = 0;
+    while(i < pts.length-1 && pts[i+1].x < x) i++;
+    const p0 = pts[Math.max(0,i-1)], p1 = pts[i], p2 = pts[Math.min(pts.length-1,i+1)], p3 = pts[Math.min(pts.length-1,i+2)];
+    const t = (x - p1.x) / ((p2.x - p1.x) || 1);
+    return catmullRom(p0.y, p1.y, p2.y, p3.y, t);
+  }
+
+  function buildCurveLUT(points){
+    const pts = [...points].sort((a,b) => a.x-b.x);
+    const lut = new Uint8ClampedArray(256);
+    for(let x=0; x<256; x++){ lut[x] = Math.round(evalCurve(pts, x)); }
+    return lut;
+  }
+
+  function isCurveIdentity(curve){
+    return curve.length === 2 && curve[0].x === 0 && curve[0].y === 0 && curve[1].x === 255 && curve[1].y === 255;
+  }
+
+  // ---------- HSL color mixer ----------
+  function rgbToHsl(r,g,b){
+    r/=255; g/=255; b/=255;
+    const max=Math.max(r,g,b), min=Math.min(r,g,b);
+    let h,s,l=(max+min)/2;
+    if(max===min){ h=0; s=0; }
+    else{
+      const d=max-min;
+      s = l>0.5 ? d/(2-max-min) : d/(max+min);
+      switch(max){
+        case r: h=(g-b)/d + (g<b?6:0); break;
+        case g: h=(b-r)/d + 2; break;
+        default: h=(r-g)/d + 4; break;
+      }
+      h*=60;
+    }
+    return [h,s,l];
+  }
+
+  function hslToRgb(h,s,l){
+    h = ((h%360)+360)%360;
+    if(s===0){ const v=l*255; return [v,v,v]; }
+    const hue2rgb=(p,q,t)=>{
+      if(t<0)t+=1; if(t>1)t-=1;
+      if(t<1/6) return p+(q-p)*6*t;
+      if(t<1/2) return q;
+      if(t<2/3) return p+(q-p)*(2/3-t)*6;
+      return p;
+    };
+    const q = l<0.5 ? l*(1+s) : l+s-l*s;
+    const p = 2*l-q;
+    const hk = h/360;
+    return [ hue2rgb(p,q,hk+1/3)*255, hue2rgb(p,q,hk)*255, hue2rgb(p,q,hk-1/3)*255 ];
+  }
+
+  function hueBandWeight(hue, center){
+    let d = Math.abs(hue-center);
+    if(d>180) d=360-d;
+    const falloff = 40;
+    return Math.max(0, 1 - d/falloff);
+  }
+
+  function isHslIdentity(){
+    return Object.values(hslAdjust).every(b => b.h===0 && b.s===0 && b.l===0);
+  }
+
+  function applyHslMixer(r,g,b){
+    let [h,s,l] = rgbToHsl(r,g,b);
+    let hueShift=0, satDelta=0, lumDelta=0, totalWeight=0;
+    for(const key in HSL_BANDS){
+      const wgt = hueBandWeight(h, HSL_BANDS[key].center);
+      if(wgt<=0) continue;
+      const adj = hslAdjust[key];
+      hueShift += wgt*adj.h;
+      satDelta += wgt*(adj.s/100);
+      lumDelta += wgt*(adj.l/100);
+      totalWeight += wgt;
+    }
+    if(totalWeight>0){
+      hueShift/=totalWeight; satDelta/=totalWeight; lumDelta/=totalWeight;
+    }
+    h += hueShift;
+    s = Math.max(0, Math.min(1, s + satDelta*0.5));
+    l = Math.max(0, Math.min(1, l + lumDelta*0.4));
+    return hslToRgb(h,s,l);
+  }
+
   function applyLightColorAdjustments(sourceCanvas){
     const w = sourceCanvas.width, h = sourceCanvas.height;
     const out = document.createElement('canvas');
@@ -1306,7 +1485,10 @@
     const ctx = out.getContext('2d');
     ctx.drawImage(sourceCanvas, 0, 0);
 
-    const noneSet = Object.values(lightAdjust).every(v => v === 0) && Object.values(colorAdjust).every(v => v === 0);
+    const noneSet = Object.values(lightAdjust).every(v => v === 0)
+      && Object.values(colorAdjust).every(v => v === 0)
+      && isCurveIdentity(toneCurve)
+      && isHslIdentity();
     if(noneSet) return out;
 
     const imgData = ctx.getImageData(0,0,w,h);
@@ -1319,6 +1501,9 @@
     const tempShift = colorAdjust.temperature;
     const tintShift = colorAdjust.tint;
     const satFactor = 1 + colorAdjust.saturation/100;
+    const curveLUT = buildCurveLUT(toneCurve);
+    const curveIsIdentity = isCurveIdentity(toneCurve);
+    const hslIsIdentity = isHslIdentity();
 
     for(let i=0;i<d.length;i+=4){
       let r = d[i], g = d[i+1], b = d[i+2];
@@ -1347,6 +1532,17 @@
       r = gray + (r-gray)*satFactor;
       g = gray + (g-gray)*satFactor;
       b = gray + (b-gray)*satFactor;
+
+      if(!curveIsIdentity){
+        r = curveLUT[Math.max(0,Math.min(255,Math.round(r)))];
+        g = curveLUT[Math.max(0,Math.min(255,Math.round(g)))];
+        b = curveLUT[Math.max(0,Math.min(255,Math.round(b)))];
+      }
+
+      if(!hslIsIdentity){
+        r = Math.max(0,Math.min(255,r)); g = Math.max(0,Math.min(255,g)); b = Math.max(0,Math.min(255,b));
+        [r,g,b] = applyHslMixer(r,g,b);
+      }
 
       d[i] = Math.max(0,Math.min(255,r));
       d[i+1] = Math.max(0,Math.min(255,g));
@@ -1390,6 +1586,174 @@
     document.getElementById('tint-val').textContent = fmtSigned(colorAdjust.tint);
     document.getElementById('saturation-slider').value = colorAdjust.saturation;
     document.getElementById('saturation-val').textContent = fmtSigned(colorAdjust.saturation);
+
+    renderHslMixerUI();
+  }
+
+  // ---------- Light/Color sub-tabs (Basic vs Curve/Mixer) ----------
+  function selectLightSub(sub){
+    document.querySelectorAll('[data-lightsub]').forEach(b => b.classList.toggle('selected', b.dataset.lightsub === sub));
+    document.getElementById('light-basic').classList.toggle('hidden', sub !== 'basic');
+    document.getElementById('light-curve').classList.toggle('hidden', sub !== 'curve');
+    if(sub === 'curve') renderCurveEditor();
+  }
+
+  function selectColorSub(sub){
+    document.querySelectorAll('[data-colorsub]').forEach(b => b.classList.toggle('selected', b.dataset.colorsub === sub));
+    document.getElementById('color-basic').classList.toggle('hidden', sub !== 'basic');
+    document.getElementById('color-mixer').classList.toggle('hidden', sub !== 'mixer');
+    if(sub === 'mixer') renderHslMixerUI();
+  }
+
+  // ---------- tone curve editor ----------
+  function svgPointFromEvent(svg, e){
+    const rect = svg.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 255;
+    const y = 255 - ((e.clientY - rect.top) / rect.height) * 255;
+    return { x: Math.max(0,Math.min(255,x)), y: Math.max(0,Math.min(255,y)) };
+  }
+
+  function resetCurve(){
+    pushHistory();
+    toneCurve = [ {x:0,y:0}, {x:255,y:255} ];
+    renderCurveEditor();
+    renderComposite();
+  }
+
+  function addCurvePoint(x,y){
+    pushHistory();
+    toneCurve.push({ x: Math.round(x), y: Math.round(y) });
+    toneCurve.sort((a,b) => a.x-b.x);
+    renderCurveEditor();
+    renderComposite();
+  }
+
+  function attachCurvePointDrag(circle, index, svg){
+    let dragging = false;
+    circle.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      dragging = true;
+      pushHistory();
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', onUp);
+    });
+    circle.addEventListener('dblclick', (e) => {
+      e.stopPropagation();
+      if(index === 0 || index === toneCurve.length-1) return; // keep endpoints
+      pushHistory();
+      toneCurve.splice(index,1);
+      renderCurveEditor();
+      renderComposite();
+    });
+    function onMove(e){
+      if(!dragging) return;
+      const pt = svgPointFromEvent(svg, e);
+      const isEndpoint = index === 0 || index === toneCurve.length-1;
+      let nx = toneCurve[index].x;
+      if(!isEndpoint){
+        const leftBound = toneCurve[index-1].x + 2;
+        const rightBound = toneCurve[index+1].x - 2;
+        nx = Math.max(leftBound, Math.min(rightBound, Math.round(pt.x)));
+      }
+      toneCurve[index] = { x: nx, y: Math.round(pt.y) };
+      renderCurveEditor();
+      renderComposite();
+    }
+    function onUp(){
+      dragging = false;
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    }
+  }
+
+  function renderCurveEditor(){
+    const svg = document.getElementById('curve-svg');
+    if(!svg) return;
+    const ns = 'http://www.w3.org/2000/svg';
+    svg.innerHTML = '';
+
+    [0.25,0.5,0.75].forEach(frac => {
+      const v = frac*255;
+      const hLine = document.createElementNS(ns,'line');
+      hLine.setAttribute('x1',0); hLine.setAttribute('x2',255);
+      hLine.setAttribute('y1',255-v); hLine.setAttribute('y2',255-v);
+      hLine.setAttribute('stroke','#3A3630'); hLine.setAttribute('stroke-width','1');
+      svg.appendChild(hLine);
+      const vLine = document.createElementNS(ns,'line');
+      vLine.setAttribute('y1',0); vLine.setAttribute('y2',255);
+      vLine.setAttribute('x1',v); vLine.setAttribute('x2',v);
+      vLine.setAttribute('stroke','#3A3630'); vLine.setAttribute('stroke-width','1');
+      svg.appendChild(vLine);
+    });
+
+    const diag = document.createElementNS(ns,'line');
+    diag.setAttribute('x1',0); diag.setAttribute('y1',255);
+    diag.setAttribute('x2',255); diag.setAttribute('y2',0);
+    diag.setAttribute('stroke','#4a4438'); diag.setAttribute('stroke-width','1'); diag.setAttribute('stroke-dasharray','4,4');
+    svg.appendChild(diag);
+
+    const lut = buildCurveLUT(toneCurve);
+    let d = '';
+    for(let x=0; x<256; x++){ d += (x===0?'M':'L') + x + ',' + (255-lut[x]) + ' '; }
+    const path = document.createElementNS(ns,'path');
+    path.setAttribute('d', d);
+    path.setAttribute('fill','none');
+    path.setAttribute('stroke','#C9A15C');
+    path.setAttribute('stroke-width','3');
+    svg.appendChild(path);
+
+    toneCurve.forEach((pt, i) => {
+      const c = document.createElementNS(ns,'circle');
+      c.setAttribute('cx', pt.x);
+      c.setAttribute('cy', 255-pt.y);
+      c.setAttribute('r', 7);
+      c.setAttribute('fill', '#C9A15C');
+      c.setAttribute('stroke', '#1C1A17');
+      c.setAttribute('stroke-width','2');
+      c.style.cursor = 'pointer';
+      attachCurvePointDrag(c, i, svg);
+      svg.appendChild(c);
+    });
+
+    svg.onclick = (e) => {
+      if(e.target.tagName === 'circle') return;
+      const pt = svgPointFromEvent(svg, e);
+      addCurvePoint(pt.x, pt.y);
+    };
+  }
+
+  // ---------- HSL mixer UI ----------
+  function renderHslChips(){
+    const wrap = document.getElementById('hsl-band-chips');
+    if(!wrap) return;
+    wrap.innerHTML = '';
+    Object.keys(HSL_BANDS).forEach(key => {
+      const chip = document.createElement('button');
+      chip.className = 'hsl-chip' + (selectedHslBand === key ? ' selected' : '');
+      chip.style.background = HSL_BANDS[key].color;
+      chip.title = key;
+      chip.onclick = () => { selectedHslBand = key; renderHslMixerUI(); };
+      wrap.appendChild(chip);
+    });
+  }
+
+  function renderHslMixerUI(){
+    const hueSlider = document.getElementById('hsl-hue-slider');
+    if(!hueSlider) return;
+    renderHslChips();
+    const band = hslAdjust[selectedHslBand];
+    hueSlider.value = band.h;
+    document.getElementById('hsl-hue-val').textContent = fmtSigned(band.h);
+    document.getElementById('hsl-sat-slider').value = band.s;
+    document.getElementById('hsl-sat-val').textContent = fmtSigned(band.s);
+    document.getElementById('hsl-lum-slider').value = band.l;
+    document.getElementById('hsl-lum-val').textContent = fmtSigned(band.l);
+  }
+
+  function setHslAdjust(key, val){
+    hslAdjust[selectedHslBand][key] = parseInt(val,10);
+    renderHslMixerUI();
+    renderComposite();
   }
 
   // ---------- scene backdrop art ----------
@@ -1670,7 +2034,7 @@
 
   async function renderPhotoWithEdits(photo, session){
     // temporarily borrow the editor's working globals to reuse the same render pipeline
-    const backup = { rawCanvas, selectedScene, selectedNeutral, selectedKeyColor, tolerance, lightAdjust, colorAdjust, cropRect };
+    const backup = { rawCanvas, selectedScene, selectedNeutral, selectedKeyColor, tolerance, lightAdjust, colorAdjust, cropRect, toneCurve, hslAdjust };
     rawCanvas = await loadRealPhotoToCanvas(photo);
     const e = photo.edits;
     if(e){
@@ -1678,12 +2042,19 @@
       selectedKeyColor = e.selectedKeyColor; tolerance = e.tolerance;
       lightAdjust = { ...e.lightAdjust }; colorAdjust = { ...e.colorAdjust };
       cropRect = e.cropRect ? { ...e.cropRect } : null;
+      toneCurve = (e.toneCurve || [{x:0,y:0},{x:255,y:255}]).map(p => ({...p}));
+      hslAdjust = e.hslAdjust ? JSON.parse(JSON.stringify(e.hslAdjust)) : backup.hslAdjust;
     } else {
       selectedScene = null; selectedNeutral = null;
       selectedKeyColor = session.keyColor || 'green'; tolerance = 65;
       lightAdjust = { exposure:0, contrast:0, highlights:0, shadows:0 };
       colorAdjust = { temperature:0, tint:0, saturation:0 };
       cropRect = null;
+      toneCurve = [{x:0,y:0},{x:255,y:255}];
+      hslAdjust = {
+        red:{h:0,s:0,l:0}, orange:{h:0,s:0,l:0}, yellow:{h:0,s:0,l:0}, green:{h:0,s:0,l:0},
+        aqua:{h:0,s:0,l:0}, blue:{h:0,s:0,l:0}, purple:{h:0,s:0,l:0}, magenta:{h:0,s:0,l:0}
+      };
     }
     const full = computeFullComposite();
     const r = cropRect || { x:0, y:0, w:480, h:600 };
@@ -1694,6 +2065,7 @@
     rawCanvas = backup.rawCanvas; selectedScene = backup.selectedScene; selectedNeutral = backup.selectedNeutral;
     selectedKeyColor = backup.selectedKeyColor; tolerance = backup.tolerance;
     lightAdjust = backup.lightAdjust; colorAdjust = backup.colorAdjust; cropRect = backup.cropRect;
+    toneCurve = backup.toneCurve; hslAdjust = backup.hslAdjust;
 
     return new Promise(resolve => out.toBlob(resolve, 'image/jpeg', 0.92));
   }
@@ -1758,7 +2130,9 @@
     photo.edits = {
       screenAnswer, selectedScene, selectedNeutral, selectedKeyColor, tolerance,
       lightAdjust: { ...lightAdjust }, colorAdjust: { ...colorAdjust },
-      cropRect: cropRect ? { ...cropRect } : null, cropAspectMode
+      cropRect: cropRect ? { ...cropRect } : null, cropAspectMode,
+      toneCurve: toneCurve.map(p => ({...p})),
+      hslAdjust: JSON.parse(JSON.stringify(hslAdjust))
     };
     try{
       const newThumb = await regenerateThumbnail();
@@ -1816,6 +2190,11 @@
       colorAdjust = { ...savedEdits.colorAdjust };
       cropRect = savedEdits.cropRect ? { ...savedEdits.cropRect } : null;
       cropAspectMode = savedEdits.cropAspectMode || '4:5';
+      toneCurve = (savedEdits.toneCurve || [{x:0,y:0},{x:255,y:255}]).map(p => ({...p}));
+      hslAdjust = savedEdits.hslAdjust ? JSON.parse(JSON.stringify(savedEdits.hslAdjust)) : {
+        red:{h:0,s:0,l:0}, orange:{h:0,s:0,l:0}, yellow:{h:0,s:0,l:0}, green:{h:0,s:0,l:0},
+        aqua:{h:0,s:0,l:0}, blue:{h:0,s:0,l:0}, purple:{h:0,s:0,l:0}, magenta:{h:0,s:0,l:0}
+      };
     } else {
       screenAnswer = s.screen;
       selectedNeutral = null;
@@ -1826,13 +2205,21 @@
       colorAdjust = { temperature: 0, tint: 0, saturation: 0 };
       cropRect = null;
       cropAspectMode = '4:5';
+      toneCurve = [{x:0,y:0},{x:255,y:255}];
+      hslAdjust = {
+        red:{h:0,s:0,l:0}, orange:{h:0,s:0,l:0}, yellow:{h:0,s:0,l:0}, green:{h:0,s:0,l:0},
+        aqua:{h:0,s:0,l:0}, blue:{h:0,s:0,l:0}, purple:{h:0,s:0,l:0}, magenta:{h:0,s:0,l:0}
+      };
     }
+    selectedHslBand = 'red';
     editHistory = [];
     redoStack = [];
     updateUndoButton();
 
     goTo('editor');
     selectTool('backdrop');
+    selectLightSub('basic');
+    selectColorSub('basic');
     renderBackdropTool();
     renderLightColorUI();
     renderCropAspectButtons();
@@ -1854,9 +2241,15 @@
     colorAdjust = { temperature: 0, tint: 0, saturation: 0 };
     cropRect = null;
     cropAspectMode = '4:5';
+    toneCurve = [{x:0,y:0},{x:255,y:255}];
+    hslAdjust = {
+      red:{h:0,s:0,l:0}, orange:{h:0,s:0,l:0}, yellow:{h:0,s:0,l:0}, green:{h:0,s:0,l:0},
+      aqua:{h:0,s:0,l:0}, blue:{h:0,s:0,l:0}, purple:{h:0,s:0,l:0}, magenta:{h:0,s:0,l:0}
+    };
     renderBackdropTool();
     renderLightColorUI();
     renderCropAspectButtons();
+    if(!document.getElementById('light-curve').classList.contains('hidden')) renderCurveEditor();
     renderComposite();
   }
 
@@ -1941,7 +2334,7 @@
     renderComposite();
   }
 
-  ['tolerance-slider','exposure-slider','contrast-slider','highlights-slider','shadows-slider','temperature-slider','tint-slider','saturation-slider']
+  ['tolerance-slider','exposure-slider','contrast-slider','highlights-slider','shadows-slider','temperature-slider','tint-slider','saturation-slider','hsl-hue-slider','hsl-sat-slider','hsl-lum-slider']
     .forEach(wireSliderHistory);
 
   loadRealSessions();
